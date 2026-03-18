@@ -1,80 +1,53 @@
 # SFTP Extension for Zed
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Zed Extension](https://img.shields.io/badge/Zed-Extension-blue)](https://zed.dev)
+SFTP sync extension for Zed, inspired by [vscode-sftp](https://github.com/Natizyskunk/vscode-sftp).
 
-This is a Zed extension for SFTP file synchronization, inspired by the popular [vscode-sftp](https://github.com/Natizyskunk/vscode-sftp) extension.
+It runs a Node.js language server from a small Rust/WASM Zed extension and supports upload-on-save, manual transfers, folder sync, multiple profiles, ignore rules, and host fingerprint verification.
 
-## ✨ Features
+## Features
 
-- **Upload on Save** - Automatically upload files when you save them
-- **Manual Upload/Download** - Upload or download files and folders on demand
-- **Sync Folders** - Synchronize entire directories between local and remote
-- **Multiple Profiles** - Support for multiple server configurations
-- **Ignore Patterns** - Exclude files and folders from sync (like .git, node_modules)
-- **SSH Key Authentication** - Secure authentication with SSH keys
-- **Password Authentication** - Support for password-based authentication
+- Upload files automatically on save
+- Upload or download individual files and folders
+- Sync a local folder to a remote folder
+- Support multiple server profiles
+- Support SSH key or password authentication
+- Respect ignore patterns such as `.git` and `node_modules`
+- Restrict sync to a workspace subdirectory with `context`
 
-## 🚀 How It Works
+## Requirements
 
-This extension uses a **Language Server Protocol (LSP)** approach to watch for file changes and trigger uploads. When you save a file in Zed, the language server detects the save event and automatically uploads the file to your configured SFTP server.
+- Zed
+- Node.js 20+
+- Rust with `wasm32-wasip2`
 
-The language server is written in Node.js/TypeScript and uses the `ssh2-sftp-client` library for SFTP operations, providing the same functionality as vscode-sftp.
-
-## 📦 Installation
-
-### Prerequisites
-
-1. **Rust** - Required to compile the extension to WebAssembly
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   # After installation, add WebAssembly target:
-   rustup target add wasm32-wasip1
-   ```
-
-2. **Node.js** - Required for the language server (v20 or later recommended)
-   ```bash
-   brew install node  # macOS
-   # Or download from https://nodejs.org/
-   ```
-
-3. **Zed Editor** - Latest version recommended
-
-### Install Extension
-
-1. Open Zed
-2. Open Extensions view: `Cmd+Shift+X` (Mac) or `Ctrl+Shift+X` (Linux/Windows)
-3. Search for "SFTP"
-4. Click "Install"
-
-Or install as dev extension:
+Install the Rust target if needed:
 
 ```bash
-# Clone the repository
-git clone https://github.com/andreyc0d3r/zed-sftp
-cd zed-sftp
-
-# Run setup script (checks dependencies and builds)
-./setup.sh
-
-# Or build manually:
-cd server && npm install && npm run build && cd ..
-cargo build --release
-
-# Install in Zed: Extensions > Install Dev Extension > Select this directory
+rustup target add wasm32-wasip2
 ```
 
-## ⚙️ Configuration
+## Install
 
-Create a `.zed/sftp.json` file in your project root:
+### From source as a dev extension
+
+```bash
+git clone https://github.com/andreyc0d3r/zed-sftp
+cd zed-sftp
+./install-zed-dev.sh
+```
+
+Then in Zed run `zed: reload extensions`.
+
+## Configuration
+
+Create `.zed/sftp.json` in the workspace root:
 
 ```json
 {
-  "name": "My Server",
   "protocol": "sftp",
   "host": "example.com",
   "port": 22,
-  "username": "user",
+  "username": "deploy",
   "privateKeyPath": "~/.ssh/id_rsa",
   "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/var/www/html",
@@ -87,37 +60,39 @@ Create a `.zed/sftp.json` file in your project root:
 }
 ```
 
-### Authentication Options
+### Authentication
 
-**SSH Key (Recommended):**
+SSH key:
+
 ```json
 {
-  "username": "user",
+  "username": "deploy",
   "privateKeyPath": "~/.ssh/id_rsa",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
-  "passphrase": "optional-passphrase"
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint"
 }
 ```
 
-**Password:**
+Password:
+
 ```json
 {
-  "username": "user",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
-  "password": "your-password"
+  "username": "deploy",
+  "password": "your-password",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint"
 }
 ```
 
-You can get the server fingerprint with:
+Get the host fingerprint with:
 
 ```bash
 ssh-keyscan -t rsa,ecdsa,ed25519 example.com | ssh-keygen -lf - -E sha256
 ```
 
-### Multiple Profiles
+### Multiple profiles
 
 ```json
 {
+  "protocol": "sftp",
   "username": "deploy",
   "privateKeyPath": "~/.ssh/id_rsa",
   "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
@@ -131,314 +106,136 @@ ssh-keyscan -t rsa,ecdsa,ed25519 example.com | ssh-keygen -lf - -E sha256
       "remotePath": "/var/www/html"
     }
   },
-  "defaultProfile": "dev"
+  "defaultProfile": "dev",
+  "uploadOnSave": true
 }
 ```
 
-### Using Context Path
+### Context path
 
-The `context` field allows you to specify a subdirectory within your workspace as the root for SFTP operations. This is useful for projects where only a specific folder should be synced.
-
-**Example: WordPress Development**
+Use `context` when only part of the workspace should be synced:
 
 ```json
 {
-  "context": "site/wp-content/",
   "protocol": "sftp",
   "host": "example.com",
-  "port": 2222,
   "username": "deploy",
-  "remotePath": "/wp-content/",
-  "uploadOnSave": true,
   "privateKeyPath": "~/.ssh/id_rsa",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint"
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
+  "remotePath": "/wp-content",
+  "context": "site/wp-content",
+  "uploadOnSave": true
 }
 ```
 
-With this configuration:
-- **Local**: `site/wp-content/themes/style.css` (in your workspace)
-- **Remote**: `/wp-content/themes/style.css` (on the server)
+With this setup, `site/wp-content/themes/style.css` maps to `/wp-content/themes/style.css`.
 
-Files outside the `site/wp-content/` directory will be ignored and won't be uploaded.
+## Commands
 
-## 🚀 Usage
+Run these from the Zed command palette:
 
-### Automatic Upload on Save
+- `SFTP: Upload File`
+- `SFTP: Download File`
+- `SFTP: Upload Folder`
+- `SFTP: Download Folder`
+- `SFTP: Sync`
 
-Once configured with `"uploadOnSave": true`, files will automatically upload when you save them in Zed.
+If `uploadOnSave` is `true`, saving a file inside the configured context uploads it automatically.
 
-### Manual Commands
+## Config Reference
 
-Use the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) to run:
+| Option | Type | Notes |
+| --- | --- | --- |
+| `protocol` | string | Must be `sftp` |
+| `host` | string | Required |
+| `port` | number | Default `22` |
+| `username` | string | Required |
+| `password` | string | Use instead of `privateKeyPath` if needed |
+| `privateKeyPath` | string | Path to SSH private key |
+| `passphrase` | string | Optional key passphrase |
+| `hostFingerprint` | string | Required, `SHA256:` recommended |
+| `remotePath` | string | Required, must be absolute |
+| `localPath` | string | Defaults to workspace root |
+| `context` | string | Workspace subdirectory used as local sync root |
+| `uploadOnSave` | boolean | Default `false` |
+| `ignore` | string[] | Glob patterns |
+| `profiles` | object | Named profile overrides |
+| `defaultProfile` | string | Selected profile name |
+| `connectTimeout` | number | Connection timeout in ms |
+| `concurrency` | number | Reserved for transfer batching |
 
-- **SFTP: Upload File** - Upload current file
-- **SFTP: Download File** - Download current file
-- **SFTP: Upload Folder** - Upload entire folder
-- **SFTP: Download Folder** - Download entire folder
-- **SFTP: Sync** - Sync local to remote
+## Troubleshooting
 
-### Configuration Options
+### Extension loads but does nothing
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | string | - | Connection name |
-| `protocol` | string | `sftp` | Protocol. Only `sftp` is currently supported |
-| `host` | string | **required** | Server hostname |
-| `port` | number | `22` | Server port |
-| `username` | string | **required** | Username |
-| `password` | string | - | Password (not recommended) |
-| `privateKeyPath` | string | - | Path to SSH private key |
-| `hostFingerprint` | string | **required** | Pinned server host key fingerprint (`SHA256:...` recommended) |
-| `passphrase` | string | - | SSH key passphrase |
-| `remotePath` | string | **required** | Remote directory path |
-| `localPath` | string | workspace | Local directory path |
-| `context` | string | - | Local subdirectory to use as root (e.g., `"site/wp-content/"`) |
-| `uploadOnSave` | boolean | `false` | Auto-upload on save |
-| `ignore` | string[] | `[]` | Ignore patterns (glob) |
-| `concurrency` | number | `4` | Max concurrent transfers |
-| `connectTimeout` | number | `10000` | Connection timeout (ms) |
+- Make sure `.zed/sftp.json` exists and contains valid JSON
+- Make sure `uploadOnSave` is enabled if you expect auto-upload
+- Make sure the saved file is inside the configured `context`
+- Check Zed logs with `zed: open log`
 
-## 📚 Documentation
+### Build or install issues
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - How the extension works
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development guide
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute
-- **[examples/](examples/)** - Configuration examples
-
-## 🔧 Troubleshooting
-
-### Extension Not Working
-
-1. **Check Node.js is installed**:
-   ```bash
-   node --version  # Should be v20+
-   ```
-
-2. **Check Zed logs**:
-   - Open command palette: `Cmd+Shift+P`
-   - Run: "zed: open log"
-   - Look for SFTP-related errors
-
-3. **Verify configuration**:
-   - Ensure `.zed/sftp.json` exists
-   - Check JSON syntax is valid
-   - Verify credentials are correct
-
-### Connection Issues
-
-1. **Test SSH connection**:
-   ```bash
-   ssh user@host
-   ```
-
-2. **Check SSH key**:
-   ```bash
-   ssh-add -l  # List loaded keys
-   ssh-add ~/.ssh/id_rsa  # Add key if needed
-   ```
-
-3. **Verify remote path**:
-   ```bash
-   sftp user@host
-   cd /remote/path  # Should work
-   ```
-
-### Files Not Uploading
-
-1. Check `uploadOnSave` is `true` in config
-2. Verify file is not in `ignore` patterns
-3. Check file permissions on remote server
-4. Look for errors in Zed log
-
-## 🎯 Comparison with vscode-sftp
-
-| Feature | vscode-sftp | zed-sftp | Status |
-|---------|-------------|----------|--------|
-| Upload on Save | ✅ | ✅ | Implemented |
-| Download Files | ✅ | ✅ | Implemented |
-| Sync Folders | ✅ | ✅ | Implemented |
-| SSH Keys | ✅ | ✅ | Implemented |
-| Password Auth | ✅ | ✅ | Implemented |
-| Multiple Profiles | ✅ | ✅ | Implemented |
-| Ignore Patterns | ✅ | ✅ | Implemented |
-| Remote Explorer | ✅ | ❌ | Planned |
-| Diff with Remote | ✅ | ❌ | Planned |
-| FTP/FTPS | ✅ | ❌ | Planned |
-| File Watcher | ✅ | ⚠️ | Partial (save only) |
-
-## Alternative Solutions (If This Doesn't Work)
-
-If you need SFTP functionality and this extension doesn't work for you:
-
-### 1. Use External Tools
-
-You can use command-line SFTP tools alongside Zed:
-
-- **rsync** - For syncing directories
-  ```bash
-  rsync -avz --exclude='.git' /local/path/ user@host:/remote/path/
-  ```
-
-- **lftp** - For FTP/SFTP operations
-  ```bash
-  lftp sftp://user@host -e "mirror -R /local/path /remote/path; quit"
-  ```
-
-- **sshfs** - Mount remote directory locally
-  ```bash
-  sshfs user@host:/remote/path /local/mount/point
-  ```
-
-### 2. Use Zed Tasks
-
-You can configure Zed tasks to run sync commands. Create a `.zed/tasks.json`:
-
-```json
-[
-  {
-    "label": "Upload to Server",
-    "command": "rsync",
-    "args": ["-avz", "--exclude='.git'", ".", "user@host:/remote/path/"]
-  },
-  {
-    "label": "Download from Server",
-    "command": "rsync",
-    "args": ["-avz", "user@host:/remote/path/", "."]
-  }
-]
-```
-
-### 3. Use Git-based Deployment
-
-If your remote server supports Git:
+Rebuild everything:
 
 ```bash
-# On your local machine
-git push production main
-
-# On the server (post-receive hook)
-git --work-tree=/var/www/html --git-dir=/var/repo/site.git checkout -f
+./build.sh
+./verify-build.sh
+./install-zed-dev.sh
 ```
 
-### 4. File Watchers with Scripts
+Make sure these files exist afterward:
 
-Use file watchers like `watchman` or `fswatch` to automatically sync on save:
+- `extension.wasm`
+- `server/dist/index.js`
+- `server/node_modules/vscode-languageserver/node.js`
+
+### Connection issues
+
+- Confirm Node.js is installed: `node --version`
+- Confirm the remote host is reachable: `ssh user@host`
+- Confirm the remote path exists and is writable
+- Confirm the host fingerprint matches the server
+
+## Development
+
+Build locally:
 
 ```bash
-# Install fswatch
-brew install fswatch  # macOS
-apt-get install fswatch  # Linux
+./build.sh
+```
 
-# Watch and sync
-fswatch -o . | xargs -n1 -I{} rsync -avz . user@host:/remote/path/
+Manual build:
+
+```bash
+cd server
+npm install
+npm run build
+cd ..
+cargo build --target wasm32-wasip2 --release
+cp target/wasm32-wasip2/release/sftp.wasm extension.wasm
+```
+
+Verify the package:
+
+```bash
+./verify-build.sh
+```
+
+Install into Zed's dev extensions directory:
+
+```bash
+./install-zed-dev.sh
 ```
 
 ## Current Scope
 
-- ✅ SFTP upload/download/sync operations
-- ✅ Upload on save
-- ✅ Multiple profiles
-- ✅ SSH key and password authentication
-- ✅ Pinned host fingerprint verification
-- ✅ Context path support
-- ⚠️ Save-triggered sync only; no full file-system watcher yet
-- ❌ FTP/FTPS are not implemented yet
+- Implemented: upload on save, manual upload/download, folder sync, multiple profiles, SSH key auth, password auth, host fingerprint verification, context path support
+- Not implemented: FTP/FTPS, remote explorer, diff with remote, full filesystem watching beyond save events
 
-## Development
+## Examples
 
-To develop this extension locally:
+See [examples](examples) for sample configs and task files.
 
-1. Install Rust via rustup:
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
+## License
 
-2. Clone this repository:
-   ```bash
-   git clone https://github.com/andreyc0d3r/zed-sftp
-   cd zed-sftp
-   ```
-
-3. Install as dev extension in Zed:
-   - Open Zed
-   - Open the Extensions view (Cmd+Shift+X)
-   - Click "Install Dev Extension"
-   - Select this directory
-
-## Contributing
-
-Contributions are welcome! However, please note that significant functionality will require updates to Zed's extension API itself.
-
-If you're interested in helping:
-
-1. Monitor Zed's extension API development
-2. Contribute to Zed core to add file system extension support
-3. Help design the API for file system operations
-
-## 🤝 Contributing
-
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Development Setup
-
-```bash
-git clone https://github.com/andreyc0d3r/zed-sftp
-cd zed-sftp
-./build.sh
-```
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development instructions.
-
-## 📝 Changelog
-
-### v0.1.0 (Initial Release)
-
-- ✅ Upload on save functionality
-- ✅ Manual upload/download commands
-- ✅ Folder sync operations
-- ✅ SSH key authentication
-- ✅ Password authentication
-- ✅ Multiple profiles support
-- ✅ Ignore patterns
-- ✅ Configuration via `.zed/sftp.json`
-
-## 🗺️ Roadmap
-
-- [ ] Remote file explorer
-- [ ] Diff with remote files
-- [ ] FTP/FTPS protocol support
-- [ ] File system watcher (beyond save events)
-- [ ] Progress indicators
-- [ ] Conflict resolution
-- [ ] Transfer queue
-- [ ] Bandwidth throttling
-
-## 📚 Resources
-
-- [Zed Extension Documentation](https://zed.dev/docs/extensions)
-- [Zed Extension API](https://docs.rs/zed_extension_api/)
-- [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
-- [ssh2-sftp-client](https://github.com/theophilusx/ssh2-sftp-client)
-- [Original vscode-sftp](https://github.com/Natizyskunk/vscode-sftp)
-
-## ⭐ Show Your Support
-
-If you find this extension useful, please:
-- ⭐ Star this repository
-- 🐛 Report bugs and issues
-- 💡 Suggest new features
-- 🤝 Contribute code or documentation
-
-## 📄 License
-
-MIT License - See [LICENSE](LICENSE) for details
-
-## 🙏 Acknowledgments
-
-- **Natizyskunk** - For the excellent [vscode-sftp](https://github.com/Natizyskunk/vscode-sftp) extension that inspired this project
-- **Zed Team** - For building an amazing editor and extension system
-- **Contributors** - Everyone who helps improve this extension
-
----
-
-**Made with ❤️ for the Zed community**
+MIT. See [LICENSE](LICENSE).

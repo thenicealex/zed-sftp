@@ -56,8 +56,12 @@ cd ..
 
 echo ""
 echo "🦀 Building Rust extension for WebAssembly..."
-rustup target add wasm32-wasip1 2>/dev/null || true
-cargo build --target wasm32-wasip1 --release
+rustup target add wasm32-wasip2 2>/dev/null || true
+cargo build --target wasm32-wasip2 --release
+
+if [ -f "target/wasm32-wasip2/release/sftp.wasm" ]; then
+    cp "target/wasm32-wasip2/release/sftp.wasm" extension.wasm
+fi
 
 echo ""
 echo "✅ Build complete!"

@@ -4,12 +4,23 @@ echo "🔍 Verifying SFTP Extension Build..."
 echo ""
 
 # Check for WASM file
-if [ -f "target/wasm32-wasip1/release/sftp.wasm" ]; then
-    echo "✅ Rust extension (WASM): target/wasm32-wasip1/release/sftp.wasm"
-    ls -lh target/wasm32-wasip1/release/sftp.wasm
+if [ -f "target/wasm32-wasip2/release/sftp.wasm" ]; then
+    echo "✅ Rust extension (WASM): target/wasm32-wasip2/release/sftp.wasm"
+    ls -lh target/wasm32-wasip2/release/sftp.wasm
 else
     echo "❌ Rust extension (WASM) not found!"
-    echo "   Run: cargo build --target wasm32-wasip1 --release"
+    echo "   Run: cargo build --target wasm32-wasip2 --release"
+    exit 1
+fi
+
+echo ""
+
+if [ -f "extension.wasm" ]; then
+    echo "✅ Packaged extension: extension.wasm"
+    ls -lh extension.wasm
+else
+    echo "❌ extension.wasm not found!"
+    echo "   Run: ./build.sh"
     exit 1
 fi
 
@@ -43,4 +54,3 @@ echo "   1. Open Zed"
 echo "   2. Press Cmd+Shift+X"
 echo "   3. Click 'Install Dev Extension'"
 echo "   4. Select this directory: $(pwd)"
-
