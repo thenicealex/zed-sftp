@@ -125,22 +125,20 @@ Supports multiple authentication methods:
 1. **SSH Private Key** (Recommended)
    - Reads key from `~/.ssh/id_rsa` or custom path
    - Supports passphrase-protected keys
+   - Requires a pinned server host fingerprint
    - Most secure method
 
 2. **Password**
    - Stored in configuration file
+   - Still requires a pinned server host fingerprint
    - Less secure, not recommended for production
-
-3. **Interactive Auth**
-   - Can be enabled for servers requiring it
-   - Handled by ssh2-sftp-client
 
 ## Connection Management
 
 - Connections are established on-demand
 - Connection is reused for multiple operations
 - Automatic reconnection on connection loss
-- Configurable timeouts and keepalive
+- Configurable connection timeout
 
 ## Error Handling
 
@@ -234,10 +232,9 @@ cargo test
 
 3. **Connection Security**
    - Use SFTP (SSH) instead of FTP when possible
-   - Verify server host keys
-   - Use strong encryption algorithms
+   - Pin and verify server host fingerprints
+   - Rotate keys deliberately and update the pinned fingerprint when needed
 
 ## License
 
 MIT License - See LICENSE file for details
-

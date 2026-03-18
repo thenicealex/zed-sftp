@@ -9,7 +9,7 @@
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    ```
 
-2. **Node.js** (v18+)
+2. **Node.js** (v20+ recommended)
    ```bash
    # macOS
    brew install node
@@ -174,6 +174,12 @@ This creates:
 - Username: test
 - Password: test
 - Upload directory: /upload
+
+Get the host fingerprint before testing:
+
+```bash
+ssh-keyscan -p 2222 localhost | ssh-keygen -lf - -E sha256
+```
 
 ### Unit Tests
 

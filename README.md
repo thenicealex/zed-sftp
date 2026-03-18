@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Zed Extension](https://img.shields.io/badge/Zed-Extension-blue)](https://zed.dev)
 
-This is a Zed extension for SFTP/FTP file synchronization, inspired by the popular [vscode-sftp](https://github.com/Natizyskunk/vscode-sftp) extension.
+This is a Zed extension for SFTP file synchronization, inspired by the popular [vscode-sftp](https://github.com/Natizyskunk/vscode-sftp) extension.
 
 ## ✨ Features
 
@@ -32,7 +32,7 @@ The language server is written in Node.js/TypeScript and uses the `ssh2-sftp-cli
    rustup target add wasm32-wasip1
    ```
 
-2. **Node.js** - Required for the language server (v18 or later)
+2. **Node.js** - Required for the language server (v20 or later recommended)
    ```bash
    brew install node  # macOS
    # Or download from https://nodejs.org/
@@ -182,7 +182,7 @@ Use the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) to run:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `name` | string | - | Connection name |
-| `protocol` | string | `sftp` | Protocol: `sftp`, `ftp`, or `ftps` |
+| `protocol` | string | `sftp` | Protocol. Only `sftp` is currently supported |
 | `host` | string | **required** | Server hostname |
 | `port` | number | `22` | Server port |
 | `username` | string | **required** | Username |
@@ -211,7 +211,7 @@ Use the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) to run:
 
 1. **Check Node.js is installed**:
    ```bash
-   node --version  # Should be v18 or later
+   node --version  # Should be v20+
    ```
 
 2. **Check Zed logs**:
@@ -333,41 +333,16 @@ apt-get install fswatch  # Linux
 fswatch -o . | xargs -n1 -I{} rsync -avz . user@host:/remote/path/
 ```
 
-## Configuration Format (Future)
+## Current Scope
 
-When Zed supports file system extensions, the configuration might look like:
-
-```json
-{
-  "name": "My Server",
-  "protocol": "sftp",
-  "host": "example.com",
-  "port": 22,
-  "username": "user",
-  "remotePath": "/var/www/html",
-  "uploadOnSave": true,
-  "ignore": [
-    ".git",
-    ".vscode",
-    "node_modules"
-  ]
-}
-```
-
-## Features from vscode-sftp That Would Be Implemented
-
-- ✅ SFTP/FTP/FTPS protocols
+- ✅ SFTP upload/download/sync operations
 - ✅ Upload on save
-- ✅ Download files/folders
-- ✅ Upload files/folders
-- ✅ Sync local to remote
-- ✅ Sync remote to local
-- ✅ Diff with remote
 - ✅ Multiple profiles
-- ✅ SSH key authentication
-- ✅ Connection hopping (proxy)
-- ✅ File watcher
-- ✅ Ignore patterns
+- ✅ SSH key and password authentication
+- ✅ Pinned host fingerprint verification
+- ✅ Context path support
+- ⚠️ Save-triggered sync only; no full file-system watcher yet
+- ❌ FTP/FTPS are not implemented yet
 
 ## Development
 

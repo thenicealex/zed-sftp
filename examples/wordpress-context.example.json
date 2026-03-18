@@ -1,5 +1,4 @@
 {
-  "$schema": "https://raw.githubusercontent.com/andreyc0d3r/zed-sftp/main/schema/sftp-config.schema.json",
   "name": "WordPress Site",
   "context": "site/wp-content/",
   "protocol": "sftp",
@@ -18,4 +17,3 @@
     "*.log"
   ]
 }
-

@@ -199,7 +199,7 @@ But the core functionality (upload on save) **works perfectly**!
 
 - ✅ Better error messages
 - ✅ More configuration options
-- ✅ FTP/FTPS support (just add library)
+- ⚠️ FTP/FTPS support would require a separate implementation and validation pass
 - ✅ Better logging
 - ✅ Performance optimizations
 
@@ -276,10 +276,9 @@ Users can install this extension today and start using SFTP with Zed, just like 
 1. **Test thoroughly** - Test on different platforms
 2. **Gather feedback** - Get user feedback
 3. **Fix bugs** - Address any issues
-4. **Add features** - Implement FTP/FTPS
+4. **Add features** - Implement additional protocols only after a separate security review
 5. **Publish** - Submit to Zed extension registry
 
 ---
 
 **Status: Ready for testing and feedback!** 🚀
-

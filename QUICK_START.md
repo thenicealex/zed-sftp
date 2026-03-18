@@ -38,10 +38,12 @@ Create `.zed/sftp.json` in your project root:
 
 ```json
 {
+  "protocol": "sftp",
   "host": "your-server.com",
   "port": 22,
   "username": "your-username",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/var/www/html",
   "uploadOnSave": true,
   "ignore": [
@@ -58,9 +60,11 @@ Create `.zed/sftp.json` in your project root:
 
 ```json
 {
+  "protocol": "sftp",
   "host": "example.com",
   "username": "deploy",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/var/www/html",
   "uploadOnSave": true
 }
@@ -70,8 +74,10 @@ Create `.zed/sftp.json` in your project root:
 
 ```json
 {
+  "protocol": "sftp",
   "host": "example.com",
   "username": "deploy",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "password": "your-password",
   "remotePath": "/var/www/html",
   "uploadOnSave": true
@@ -82,8 +88,10 @@ Create `.zed/sftp.json` in your project root:
 
 ```json
 {
+  "protocol": "sftp",
   "username": "deploy",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "profiles": {
     "dev": {
       "host": "dev.example.com",
@@ -126,7 +134,7 @@ Open command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and try:
 
 1. **Check Node.js**:
    ```bash
-   node --version  # Should be v18+
+   node --version  # Should be v20+
    ```
 
 2. **Check Zed Log**:
@@ -173,6 +181,8 @@ Open command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and try:
 |--------|------|-------------|
 | `host` | string | Server hostname or IP |
 | `username` | string | SSH username |
+| `protocol` | string | Must be `sftp` |
+| `hostFingerprint` | string | Pinned server host key fingerprint |
 | `remotePath` | string | Remote directory path |
 
 ### Authentication (choose one)
@@ -199,9 +209,11 @@ Open command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and try:
 
 ```json
 {
+  "protocol": "sftp",
   "host": "wordpress-server.com",
   "username": "wp-admin",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/var/www/wordpress/wp-content/themes/my-theme",
   "uploadOnSave": true,
   "ignore": [
@@ -217,9 +229,11 @@ Open command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and try:
 
 ```json
 {
+  "protocol": "sftp",
   "host": "app-server.com",
   "username": "node",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/home/node/app",
   "uploadOnSave": true,
   "ignore": [
@@ -236,9 +250,11 @@ Open command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and try:
 
 ```json
 {
+  "protocol": "sftp",
   "host": "web-server.com",
   "username": "www-data",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/var/www/html",
   "uploadOnSave": true,
   "ignore": [
@@ -268,9 +284,11 @@ Then in `.zed/sftp.json`:
 
 ```json
 {
+  "protocol": "sftp",
   "host": "myserver",
   "username": "deploy",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/var/www/html",
   "uploadOnSave": true
 }
@@ -292,15 +310,23 @@ Then in `.zed/sftp.json`:
 }
 ```
 
-### 3. Use Environment Variables
+### 3. Pin the Host Fingerprint
 
-Store sensitive data in environment variables:
+Get the server fingerprint before using the extension:
+
+```bash
+ssh-keyscan -t rsa,ecdsa,ed25519 example.com | ssh-keygen -lf - -E sha256
+```
+
+### 4. Use Environment Variables
+
+Store sensitive data outside repo-tracked config when possible:
 
 ```bash
 export SFTP_PASSWORD="your-password"
 ```
 
-### 4. Test Connection First
+### 5. Test Connection First
 
 Before using the extension, test your SSH connection:
 
@@ -309,7 +335,7 @@ ssh user@host
 # If this works, the extension should work too
 ```
 
-### 5. Check Logs
+### 6. Check Logs
 
 Always check Zed logs when troubleshooting:
 
@@ -338,4 +364,3 @@ tail -f ~/.local/share/zed/logs/Zed.log
 ---
 
 **Happy coding with Zed + SFTP!** 🚀
-

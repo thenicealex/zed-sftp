@@ -70,7 +70,7 @@ rustup update
 ### Check Node.js
 
 ```bash
-node --version  # Should be v18+
+node --version  # Should be v20+
 ```
 
 ### Check Server Build
@@ -124,9 +124,11 @@ Check `.zed/sftp.json`:
 
 ```json
 {
+  "protocol": "sftp",
   "host": "example.com",
   "username": "user",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/var/www/html",
   "uploadOnSave": true
 }
@@ -135,6 +137,7 @@ Check `.zed/sftp.json`:
 Common mistakes:
 - ❌ Wrong host/username
 - ❌ Wrong key path
+- ❌ Missing or incorrect `hostFingerprint`
 - ❌ Remote path doesn't exist
 - ❌ No write permissions
 
@@ -209,7 +212,7 @@ cd ..
 ### Check Node Version
 
 ```bash
-node --version  # Should be v18+
+node --version  # Should be v20+
 npm --version   # Should be 9+
 ```
 
@@ -228,7 +231,7 @@ The `zed_extension_api` might have changed. Check the version in `Cargo.toml`:
 
 ```toml
 [dependencies]
-zed_extension_api = "0.2.0"
+zed_extension_api = "0.7.0"
 ```
 
 Try updating to latest:
@@ -306,7 +309,7 @@ When reporting issues, include:
 4. **Node version**: `node --version`
 5. **Build output**: `./verify-build.sh`
 6. **Zed logs**: Relevant error messages
-7. **Configuration**: Your `.zed/sftp.json` (remove passwords!)
+7. **Configuration**: Your `.zed/sftp.json` (remove passwords and private keys)
 
 ## Common Solutions Summary
 
@@ -335,4 +338,3 @@ When reporting issues, include:
    - Build output
    - Zed logs
    - Configuration (sanitized)
-
