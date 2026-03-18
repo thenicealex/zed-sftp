@@ -147,6 +147,7 @@ eprintln!("Debug: {:?}", value);
      "port": 2222,
      "username": "test",
      "password": "test",
+     "hostFingerprint": "SHA256:replace-with-test-server-fingerprint",
      "remotePath": "/upload",
      "uploadOnSave": true
    }
@@ -407,4 +408,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 ## License
 
 MIT License - See LICENSE file
-

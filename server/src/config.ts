@@ -11,6 +11,7 @@ export interface SftpConfig {
 	password?: string;
 	privateKeyPath?: string;
 	passphrase?: string;
+	hostFingerprint?: string;
 	remotePath: string;
 	localPath?: string;
 	context?: string; // Local subdirectory to use as root (e.g., "site/wp-content/")
@@ -40,12 +41,15 @@ export interface SftpConfig {
 
 export class ConfigManager {
 	private workspaceFolder: string;
+	private workspaceRoot: string;
 	private config: SftpConfig | null = null;
 	private ignorePatterns: string[] = [];
 	private contextPath: string = ""; // Resolved context path
 
 	constructor(workspaceFolder: string) {
 		this.workspaceFolder = workspaceFolder;
+		this.workspaceRoot = this.resolveExistingPath(workspaceFolder);
+		this.contextPath = this.workspaceRoot;
 	}
 
 	async loadConfig(): Promise<SftpConfig | null> {
@@ -68,62 +72,77 @@ export class ConfigManager {
 
 		try {
 			const configContent = fs.readFileSync(configPath, "utf-8");
-			this.config = JSON.parse(configContent);
-
-			// Validate required fields
-			if (!this.config) {
+			const rawConfig = JSON.parse(configContent) as SftpConfig | null;
+			if (!rawConfig) {
 				throw new Error("Config is empty");
 			}
 
-			if (!this.config.host) {
+			let config = rawConfig;
+			if (rawConfig.profiles && rawConfig.defaultProfile) {
+				const profile = rawConfig.profiles[rawConfig.defaultProfile];
+				if (!profile) {
+					throw new Error(`Unknown defaultProfile: ${rawConfig.defaultProfile}`);
+				}
+				config = { ...rawConfig, ...profile };
+			}
+
+			if (!config.host) {
 				throw new Error("Missing required field: host");
 			}
 
-			if (!this.config.username) {
+			if (config.protocol !== "sftp") {
+				throw new Error(`Unsupported protocol: ${config.protocol}. Only "sftp" is currently implemented.`);
+			}
+
+			if (!config.username) {
 				throw new Error("Missing required field: username");
 			}
 
-			if (!this.config.remotePath) {
+			if (!config.remotePath) {
 				throw new Error("Missing required field: remotePath");
 			}
 
-			if (!this.config.password && !this.config.privateKeyPath) {
+			if (!config.password && !config.privateKeyPath) {
 				throw new Error("Either password or privateKeyPath must be provided");
 			}
 
-			if (this.config) {
-				// Set default local path
-				if (!this.config.localPath) {
-					this.config.localPath = this.workspaceFolder;
-				}
+			if (!config.hostFingerprint) {
+				throw new Error("Missing required field: hostFingerprint");
+			}
 
-				// Handle context path (local subdirectory to use as root)
-				if (this.config.context) {
-					// Normalize context path (remove leading/trailing slashes)
-					let context = this.config.context.replace(/^\/+|\/+$/g, "");
-					this.contextPath = path.join(this.workspaceFolder, context);
-				} else {
-					this.contextPath = this.workspaceFolder;
-				}
+			if (!config.localPath) {
+				config.localPath = this.workspaceRoot;
+			}
 
-				// Load ignore patterns
-				this.ignorePatterns = this.config.ignore || [];
+			const context = (config.context || "").trim();
+			const candidateContext = context
+				? path.resolve(this.workspaceRoot, context)
+				: this.workspaceRoot;
+			if (!this.isWithinRoot(this.workspaceRoot, candidateContext)) {
+				throw new Error("Context path must stay inside the workspace");
+			}
+			this.contextPath = this.resolvePathForContainmentCheck(candidateContext);
+			if (!this.isWithinRoot(this.workspaceRoot, this.contextPath)) {
+				throw new Error("Context path resolves outside the workspace");
+			}
 
-				// Add default ignore patterns
-				if (!this.ignorePatterns.includes(".git")) {
-					this.ignorePatterns.push(".git");
-				}
-				if (!this.ignorePatterns.includes("node_modules")) {
-					this.ignorePatterns.push("node_modules");
-				}
+			const remotePath = path.posix.normalize(config.remotePath);
+			if (!remotePath.startsWith("/")) {
+				throw new Error("remotePath must be absolute");
+			}
+			if (remotePath.split("/").includes("..")) {
+				throw new Error("remotePath must not contain parent directory segments");
+			}
+			config.remotePath = remotePath;
 
-				// Handle profiles
-				if (this.config.profiles && this.config.defaultProfile) {
-					const profile = this.config.profiles[this.config.defaultProfile];
-					if (profile) {
-						this.config = { ...this.config, ...profile };
-					}
-				}
+			this.config = config;
+			this.ignorePatterns = [...(config.ignore || [])];
+
+			if (!this.ignorePatterns.includes(".git")) {
+				this.ignorePatterns.push(".git");
+			}
+			if (!this.ignorePatterns.includes("node_modules")) {
+				this.ignorePatterns.push("node_modules");
 			}
 
 			return this.config;
@@ -133,7 +152,7 @@ export class ConfigManager {
 	}
 
 	shouldIgnore(filePath: string): boolean {
-		const relativePath = path.relative(this.workspaceFolder, filePath);
+		const relativePath = path.relative(this.workspaceRoot, this.resolvePathForContainmentCheck(filePath));
 
 		for (const pattern of this.ignorePatterns) {
 			if (minimatch(relativePath, pattern, { dot: true })) {
@@ -148,9 +167,7 @@ export class ConfigManager {
 	 * Check if a file is within the context path
 	 */
 	isInContext(filePath: string): boolean {
-		const normalized = path.normalize(filePath);
-		const contextNormalized = path.normalize(this.contextPath);
-		return normalized.startsWith(contextNormalized);
+		return this.isWithinRoot(this.contextPath, this.resolvePathForContainmentCheck(filePath));
 	}
 
 	/**
@@ -166,25 +183,23 @@ export class ConfigManager {
 			return null;
 		}
 
-		// Get relative path from context directory
-		const relativePath = path.relative(this.contextPath, localFilePath);
+		const resolvedLocalPath = this.resolvePathForContainmentCheck(localFilePath);
+		const relativePath = path.relative(this.contextPath, resolvedLocalPath);
 
 		// Security check: prevent path traversal
-		if (relativePath.includes("..")) {
+		if (!relativePath || relativePath === ".") {
+			return this.config.remotePath;
+		}
+
+		if (relativePath.split(path.sep).includes("..")) {
 			throw new Error("Path traversal detected in file path");
 		}
 
-		// Normalize remote path (ensure it starts with /)
-		let remotePath = this.config.remotePath;
-		if (!remotePath.startsWith("/")) {
-			remotePath = "/" + remotePath;
-		}
-
-		// Combine remote path with relative path (use forward slashes for remote)
-		const remoteFilePath = path.posix.join(remotePath, relativePath.split(path.sep).join("/"));
-
-		// Final security check on combined path
-		if (remoteFilePath.includes("..")) {
+		const remoteFilePath = path.posix.join(
+			this.config.remotePath,
+			relativePath.split(path.sep).join("/")
+		);
+		if (!this.isWithinRemoteRoot(this.config.remotePath, remoteFilePath)) {
 			throw new Error("Path traversal detected in remote path");
 		}
 
@@ -197,6 +212,38 @@ export class ConfigManager {
 
 	getContextPath(): string {
 		return this.contextPath;
+	}
+
+	private resolveExistingPath(targetPath: string): string {
+		return fs.realpathSync.native(path.resolve(targetPath));
+	}
+
+	private resolvePathForContainmentCheck(targetPath: string): string {
+		const absoluteTarget = path.resolve(targetPath);
+		const missingSegments: string[] = [];
+		let current = absoluteTarget;
+
+		while (!fs.existsSync(current)) {
+			const parent = path.dirname(current);
+			if (parent === current) {
+				return absoluteTarget;
+			}
+			missingSegments.unshift(path.basename(current));
+			current = parent;
+		}
+
+		const resolvedBase = fs.realpathSync.native(current);
+		return path.resolve(resolvedBase, ...missingSegments);
+	}
+
+	private isWithinRoot(rootPath: string, candidatePath: string): boolean {
+		const relativePath = path.relative(rootPath, candidatePath);
+		return relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
+	}
+
+	private isWithinRemoteRoot(remoteRoot: string, remotePath: string): boolean {
+		const relativePath = path.posix.relative(remoteRoot, remotePath);
+		return relativePath === "" || (!relativePath.startsWith("..") && !path.posix.isAbsolute(relativePath));
 	}
 
 	async saveConfig(config: SftpConfig): Promise<void> {

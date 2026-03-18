@@ -1,6 +1,7 @@
 import Client from 'ssh2-sftp-client';
 import * as path from 'path';
 import * as fs from 'fs';
+import { createHash, timingSafeEqual } from 'crypto';
 import { Connection } from 'vscode-languageserver';
 import { SftpConfig, ConfigManager } from './config';
 
@@ -24,10 +25,15 @@ export class SftpClient {
     }
 
     try {
+      const expectedFingerprint = this.getExpectedHostFingerprint();
       const connectConfig: any = {
         host: this.config.host,
         port: this.config.port || 22,
         username: this.config.username,
+        hostVerifier: (hostKey: Buffer) => {
+          const actualFingerprint = this.computeFingerprint(hostKey, expectedFingerprint.algorithm);
+          return this.secureCompare(actualFingerprint, expectedFingerprint.value);
+        },
       };
 
       // Handle authentication
@@ -201,5 +207,43 @@ export class SftpClient {
   async close(): Promise<void> {
     await this.disconnect();
   }
-}
 
+  private getExpectedHostFingerprint(): { algorithm: 'sha256' | 'md5'; value: string } {
+    const fingerprint = this.config.hostFingerprint?.trim();
+    if (!fingerprint) {
+      throw new Error('Missing required field: hostFingerprint');
+    }
+
+    if (fingerprint.toUpperCase().startsWith('MD5:')) {
+      return {
+        algorithm: 'md5',
+        value: fingerprint.slice(4).toLowerCase().replace(/:/g, ''),
+      };
+    }
+
+    const normalized = fingerprint.toUpperCase().startsWith('SHA256:')
+      ? fingerprint.slice(7)
+      : fingerprint;
+
+    return {
+      algorithm: 'sha256',
+      value: normalized.replace(/=+$/g, ''),
+    };
+  }
+
+  private computeFingerprint(hostKey: Buffer, algorithm: 'sha256' | 'md5'): string {
+    const digest = createHash(algorithm).update(hostKey).digest(algorithm === 'md5' ? 'hex' : 'base64');
+    return algorithm === 'md5' ? digest.toLowerCase() : digest.replace(/=+$/g, '');
+  }
+
+  private secureCompare(left: string, right: string): boolean {
+    const leftBuffer = Buffer.from(left);
+    const rightBuffer = Buffer.from(right);
+
+    if (leftBuffer.length !== rightBuffer.length) {
+      return false;
+    }
+
+    return timingSafeEqual(leftBuffer, rightBuffer);
+  }
+}

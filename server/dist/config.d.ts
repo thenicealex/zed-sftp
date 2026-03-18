@@ -7,6 +7,7 @@ export interface SftpConfig {
     password?: string;
     privateKeyPath?: string;
     passphrase?: string;
+    hostFingerprint?: string;
     remotePath: string;
     localPath?: string;
     context?: string;
@@ -35,6 +36,7 @@ export interface SftpConfig {
 }
 export declare class ConfigManager {
     private workspaceFolder;
+    private workspaceRoot;
     private config;
     private ignorePatterns;
     private contextPath;
@@ -51,6 +53,10 @@ export declare class ConfigManager {
     getRemotePath(localFilePath: string): string | null;
     getConfig(): SftpConfig | null;
     getContextPath(): string;
+    private resolveExistingPath;
+    private resolvePathForContainmentCheck;
+    private isWithinRoot;
+    private isWithinRemoteRoot;
     saveConfig(config: SftpConfig): Promise<void>;
     reloadConfig(): Promise<SftpConfig | null>;
 }

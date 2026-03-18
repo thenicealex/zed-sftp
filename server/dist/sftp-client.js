@@ -40,6 +40,7 @@ exports.SftpClient = void 0;
 const ssh2_sftp_client_1 = __importDefault(require("ssh2-sftp-client"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
+const crypto_1 = require("crypto");
 class SftpClient {
     constructor(config, connection, configManager) {
         this.isConnected = false;
@@ -53,10 +54,15 @@ class SftpClient {
             return;
         }
         try {
+            const expectedFingerprint = this.getExpectedHostFingerprint();
             const connectConfig = {
                 host: this.config.host,
                 port: this.config.port || 22,
                 username: this.config.username,
+                hostVerifier: (hostKey) => {
+                    const actualFingerprint = this.computeFingerprint(hostKey, expectedFingerprint.algorithm);
+                    return this.secureCompare(actualFingerprint, expectedFingerprint.value);
+                },
             };
             // Handle authentication
             if (this.config.password) {
@@ -203,6 +209,37 @@ class SftpClient {
     }
     async close() {
         await this.disconnect();
+    }
+    getExpectedHostFingerprint() {
+        const fingerprint = this.config.hostFingerprint?.trim();
+        if (!fingerprint) {
+            throw new Error('Missing required field: hostFingerprint');
+        }
+        if (fingerprint.toUpperCase().startsWith('MD5:')) {
+            return {
+                algorithm: 'md5',
+                value: fingerprint.slice(4).toLowerCase().replace(/:/g, ''),
+            };
+        }
+        const normalized = fingerprint.toUpperCase().startsWith('SHA256:')
+            ? fingerprint.slice(7)
+            : fingerprint;
+        return {
+            algorithm: 'sha256',
+            value: normalized.replace(/=+$/g, ''),
+        };
+    }
+    computeFingerprint(hostKey, algorithm) {
+        const digest = (0, crypto_1.createHash)(algorithm).update(hostKey).digest(algorithm === 'md5' ? 'hex' : 'base64');
+        return algorithm === 'md5' ? digest.toLowerCase() : digest.replace(/=+$/g, '');
+    }
+    secureCompare(left, right) {
+        const leftBuffer = Buffer.from(left);
+        const rightBuffer = Buffer.from(right);
+        if (leftBuffer.length !== rightBuffer.length) {
+            return false;
+        }
+        return (0, crypto_1.timingSafeEqual)(leftBuffer, rightBuffer);
     }
 }
 exports.SftpClient = SftpClient;

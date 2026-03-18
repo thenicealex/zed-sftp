@@ -25,6 +25,7 @@
   "connectTimeout": 10000,
   "keepalive": 10000,
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "passphrase": null,
   "interactiveAuth": false,
   "algorithms": {
@@ -57,4 +58,3 @@
     ]
   }
 }
-

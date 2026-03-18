@@ -1,6 +1,7 @@
 {
   "username": "deploy",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "uploadOnSave": false,
   "ignore": [
     ".git",
@@ -29,4 +30,3 @@
   },
   "defaultProfile": "dev"
 }
-

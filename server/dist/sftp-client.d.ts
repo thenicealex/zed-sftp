@@ -17,5 +17,8 @@ export declare class SftpClient {
     listRemoteFiles(remotePath: string): Promise<string[]>;
     deleteRemoteFile(remotePath: string): Promise<void>;
     close(): Promise<void>;
+    private getExpectedHostFingerprint;
+    private computeFingerprint;
+    private secureCompare;
 }
 //# sourceMappingURL=sftp-client.d.ts.map

@@ -73,9 +73,9 @@ echo '   {
      "host": "your-server.com",
      "username": "your-username",
      "privateKeyPath": "~/.ssh/id_rsa",
+     "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
      "remotePath": "/var/www/html",
      "uploadOnSave": true
    }'
 echo ""
 echo "Happy coding! 🚀"
-

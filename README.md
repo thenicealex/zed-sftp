@@ -75,6 +75,8 @@ Create a `.zed/sftp.json` file in your project root:
   "host": "example.com",
   "port": 22,
   "username": "user",
+  "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "remotePath": "/var/www/html",
   "uploadOnSave": true,
   "ignore": [
@@ -92,6 +94,7 @@ Create a `.zed/sftp.json` file in your project root:
 {
   "username": "user",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "passphrase": "optional-passphrase"
 }
 ```
@@ -100,8 +103,15 @@ Create a `.zed/sftp.json` file in your project root:
 ```json
 {
   "username": "user",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "password": "your-password"
 }
+```
+
+You can get the server fingerprint with:
+
+```bash
+ssh-keyscan -t rsa,ecdsa,ed25519 example.com | ssh-keygen -lf - -E sha256
 ```
 
 ### Multiple Profiles
@@ -110,6 +120,7 @@ Create a `.zed/sftp.json` file in your project root:
 {
   "username": "deploy",
   "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
   "profiles": {
     "dev": {
       "host": "dev.example.com",
@@ -139,7 +150,8 @@ The `context` field allows you to specify a subdirectory within your workspace a
   "username": "deploy",
   "remotePath": "/wp-content/",
   "uploadOnSave": true,
-  "privateKeyPath": "~/.ssh/id_rsa"
+  "privateKeyPath": "~/.ssh/id_rsa",
+  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint"
 }
 ```
 
@@ -176,6 +188,7 @@ Use the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) to run:
 | `username` | string | **required** | Username |
 | `password` | string | - | Password (not recommended) |
 | `privateKeyPath` | string | - | Path to SSH private key |
+| `hostFingerprint` | string | **required** | Pinned server host key fingerprint (`SHA256:...` recommended) |
 | `passphrase` | string | - | SSH key passphrase |
 | `remotePath` | string | **required** | Remote directory path |
 | `localPath` | string | workspace | Local directory path |
@@ -454,4 +467,3 @@ MIT License - See [LICENSE](LICENSE) for details
 ---
 
 **Made with ❤️ for the Zed community**
-
