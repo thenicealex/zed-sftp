@@ -8,4 +8,4 @@ repository = "https://github.com/andreyc0d3r/zed-sftp"
 
 [language_servers.sftp-server]
 name = "SFTP Server"
-languages = ["PHP", "JavaScript", "TypeScript", "CSS", "HTML", "JSON", "Markdown", "YAML", "XML", "Plain Text", "Python", "Ruby", "Go", "Rust", "C", "C++", "Java", "Swift"]
+languages = ["PHP", "JavaScript", "JSX", "TypeScript", "TSX", "CSS", "SCSS", "LESS", "HTML", "JSON", "JSONC", "Markdown", "YAML", "XML", "TOML", "Shell Script", "Dockerfile", "SQL", "Vue", "Svelte", "Astro", "Plain Text", "Python", "Ruby", "Go", "Rust", "C", "C++", "Java", "Swift"]
