@@ -7,6 +7,7 @@ REPO_DIR="$SCRIPT_DIR"
 SERVER_DIR="$REPO_DIR/server"
 EXTENSION_ID="$(awk -F'"' '/^id = / { print $2; exit }' "$REPO_DIR/extension.toml")"
 INSTALL_AFTER_BUILD=0
+CLEAN_ONLY=0
 
 if [ -z "$EXTENSION_ID" ]; then
     echo "❌ Failed to determine extension id from extension.toml"
@@ -14,7 +15,7 @@ if [ -z "$EXTENSION_ID" ]; then
 fi
 
 usage() {
-    echo "Usage: ./build.sh [--install]"
+    echo "Usage: ./build.sh [--install | --clean]"
 }
 
 # Source cargo environment if it exists
@@ -84,10 +85,22 @@ install_extension() {
     echo "- $dest/server/node_modules"
 }
 
+clean_build_artifacts() {
+    echo "Cleaning local build artifacts ..."
+    rm -rf \
+        "$REPO_DIR/extension.wasm" \
+        "$SERVER_DIR/dist" \
+        "$REPO_DIR/target/wasm32-wasip2"
+    echo "Local build artifacts removed"
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --install)
             INSTALL_AFTER_BUILD=1
+            ;;
+        --clean)
+            CLEAN_ONLY=1
             ;;
         -h|--help)
             usage
@@ -100,6 +113,16 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
+
+if [ "$CLEAN_ONLY" -eq 1 ] && [ "$INSTALL_AFTER_BUILD" -eq 1 ]; then
+    echo "❌ --clean cannot be combined with --install"
+    exit 1
+fi
+
+if [ "$CLEAN_ONLY" -eq 1 ]; then
+    clean_build_artifacts
+    exit 0
+fi
 
 echo "🔧 Building SFTP Extension for Zed..."
 echo ""

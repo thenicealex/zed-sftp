@@ -215,6 +215,12 @@ Rebuild everything:
 ./build.sh --install
 ```
 
+Remove local build outputs without touching the installed Zed dev extension:
+
+```bash
+./build.sh --clean
+```
+
 Make sure these files exist afterward:
 
 - `extension.wasm`
@@ -237,7 +243,7 @@ Build locally:
 ./build.sh
 ```
 
-`build.sh` is the single local entry point. By default it checks for Rust, Node.js, and npm, then builds the language server and `extension.wasm`. Run `./build.sh --install` to sync the built extension into Zed's dev extensions directory.
+`build.sh` is the single local entry point. By default it checks for Rust, Node.js, and npm, then builds the language server and `extension.wasm`. Run `./build.sh --install` to sync the built extension into Zed's dev extensions directory, or `./build.sh --clean` to remove local build artifacts.
 
 Manual build:
 

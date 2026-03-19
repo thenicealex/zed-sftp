@@ -80,6 +80,51 @@ test_reports_missing_node() {
     assert_contains "$output" "Node.js is not installed"
 }
 
+test_clean_removes_local_build_artifacts_only() {
+    local temp_dir
+    temp_dir="$(mktemp -d)"
+    trap 'rm -rf "$temp_dir"' RETURN
+
+    make_fake_repo "$temp_dir/repo"
+    mkdir -p \
+        "$temp_dir/repo/server/dist" \
+        "$temp_dir/repo/target/wasm32-wasip2/release" \
+        "$temp_dir/home/Library/Application Support/Zed/extensions/work/sftp/server/dist"
+    printf "wasm" > "$temp_dir/repo/extension.wasm"
+    printf "server build" > "$temp_dir/repo/server/dist/index.js"
+    printf "wasm" > "$temp_dir/repo/target/wasm32-wasip2/release/sftp.wasm"
+    printf "installed build" > "$temp_dir/home/Library/Application Support/Zed/extensions/work/sftp/server/dist/index.js"
+
+    PATH="$CORE_PATH" HOME="$temp_dir/home" "$temp_dir/repo/build.sh" --clean >/dev/null 2>&1
+
+    [[ ! -e "$temp_dir/repo/extension.wasm" ]] || fail "expected extension.wasm to be removed by --clean"
+    [[ ! -e "$temp_dir/repo/server/dist" ]] || fail "expected server/dist to be removed by --clean"
+    [[ ! -e "$temp_dir/repo/target/wasm32-wasip2" ]] || fail "expected wasm target output to be removed by --clean"
+    [[ -f "$temp_dir/home/Library/Application Support/Zed/extensions/work/sftp/server/dist/index.js" ]] || fail "expected installed Zed extension files to remain after --clean"
+}
+
+test_clean_conflicts_with_install() {
+    local temp_dir
+    temp_dir="$(mktemp -d)"
+    trap 'rm -rf "$temp_dir"' RETURN
+
+    make_fake_repo "$temp_dir/repo"
+
+    local output
+    set +e
+    output="$(
+        PATH="$CORE_PATH" HOME="$temp_dir/home" "$temp_dir/repo/build.sh" --clean --install 2>&1
+    )"
+    local status=$?
+    set -e
+
+    if [[ $status -eq 0 ]]; then
+        fail "build.sh should fail when --clean and --install are combined"
+    fi
+
+    assert_contains "$output" "--clean cannot be combined with --install"
+}
+
 test_builds_extension_artifacts() {
     local temp_dir
     temp_dir="$(mktemp -d)"
@@ -244,6 +289,8 @@ exit 1
 }
 
 test_reports_missing_node
+test_clean_removes_local_build_artifacts_only
+test_clean_conflicts_with_install
 test_builds_extension_artifacts
 test_points_to_install_flag
 test_install_flag_syncs_extension_into_zed_dir
