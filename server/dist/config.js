@@ -192,11 +192,13 @@ class ConfigManager {
     }
     isWithinRoot(rootPath, candidatePath) {
         const relativePath = path.relative(rootPath, candidatePath);
-        return relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
+        return (relativePath === "" ||
+            (!relativePath.startsWith("..") && !path.isAbsolute(relativePath)));
     }
     isWithinRemoteRoot(remoteRoot, remotePath) {
         const relativePath = path.posix.relative(remoteRoot, remotePath);
-        return relativePath === "" || (!relativePath.startsWith("..") && !path.posix.isAbsolute(relativePath));
+        return (relativePath === "" ||
+            (!relativePath.startsWith("..") && !path.posix.isAbsolute(relativePath)));
     }
     async saveConfig(config) {
         const configDir = path.join(this.workspaceFolder, ".zed");
