@@ -17,6 +17,18 @@ export declare class SftpClient {
     listRemoteFiles(remotePath: string): Promise<string[]>;
     deleteRemoteFile(remotePath: string): Promise<void>;
     close(): Promise<void>;
+    private createProxySocket;
+    private connectToProxy;
+    private establishHttpTunnel;
+    private establishSocks5Tunnel;
+    private performSocks5Authentication;
+    private createSocks5Address;
+    private consumeSocks5ReplyAddress;
+    private writeToSocket;
+    private readSocketBytes;
+    private readSocketUntil;
+    private formatAuthority;
+    private getSocks5ReplyError;
     private getExpectedHostFingerprint;
     private computeFingerprint;
     private secureCompare;

@@ -11,6 +11,7 @@ It runs a Node.js language server from a small Rust/WASM Zed extension and suppo
 - Sync a local folder to a remote folder
 - Support multiple server profiles
 - Support SSH key or password authentication
+- Support optional SOCKS5 or HTTP proxy connections
 - Respect ignore patterns such as `.git` and `node_modules`
 - Restrict sync to a workspace subdirectory with `context`
 
@@ -85,6 +86,42 @@ If you want to enforce host fingerprint verification, add `hostFingerprint` and 
 ssh-keyscan -t rsa,ecdsa,ed25519 example.com | ssh-keygen -lf - -E sha256
 ```
 
+### Proxy
+
+If you need to reach the server through a proxy, add an optional `proxy` block. Leave it out to connect directly.
+
+SOCKS5:
+
+```json
+{
+  "host": "example.com",
+  "username": "deploy",
+  "password": "your-password",
+  "proxy": {
+    "type": "socks5",
+    "host": "127.0.0.1",
+    "port": 1080
+  }
+}
+```
+
+HTTP CONNECT:
+
+```json
+{
+  "host": "example.com",
+  "username": "deploy",
+  "password": "your-password",
+  "proxy": {
+    "type": "http",
+    "host": "127.0.0.1",
+    "port": 7890
+  }
+}
+```
+
+If your proxy requires authentication, add `username` and `password` inside `proxy`.
+
 ### Multiple profiles
 
 ```json
@@ -149,6 +186,7 @@ If `uploadOnSave` is `true`, saving a file inside the configured context uploads
 | `privateKeyPath` | string | Path to SSH private key |
 | `passphrase` | string | Optional key passphrase |
 | `hostFingerprint` | string | Optional. When set, `SHA256:` is recommended |
+| `proxy` | object | Optional. Supports `socks5` and `http` proxy tunnels |
 | `remotePath` | string | Required, must be absolute |
 | `localPath` | string | Defaults to workspace root |
 | `context` | string | Workspace subdirectory used as local sync root |
@@ -189,6 +227,7 @@ Make sure these files exist afterward:
 - Confirm the remote host is reachable: `ssh user@host`
 - Confirm the remote path exists and is writable
 - If `hostFingerprint` is configured, confirm it matches the server
+- If `proxy` is configured, confirm the proxy host, port, and credentials are correct
 
 ## Development
 
@@ -219,12 +258,12 @@ Install into Zed's dev extensions directory:
 
 ## Current Scope
 
-- Implemented: upload on save, manual upload/download, folder sync, multiple profiles, SSH key auth, password auth, optional host fingerprint verification, context path support
+- Implemented: upload on save, manual upload/download, folder sync, multiple profiles, SSH key auth, password auth, optional host fingerprint verification, optional SOCKS5/HTTP proxy support, context path support
 - Not implemented: FTP/FTPS, remote explorer, diff with remote, full filesystem watching beyond save events
 
 ## Examples
 
-See [examples](examples) for sample configs and task files.
+See [examples](examples) for sample direct and proxied configs plus task files.
 
 ## License
 

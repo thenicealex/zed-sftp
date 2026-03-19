@@ -89,6 +89,7 @@ class ConfigManager {
             if (!config.password && !config.privateKeyPath) {
                 throw new Error("Either password or privateKeyPath must be provided");
             }
+            this.validateProxyConfig(config.proxy);
             if (!config.localPath) {
                 config.localPath = this.workspaceRoot;
             }
@@ -171,6 +172,23 @@ class ConfigManager {
     }
     getContextPath() {
         return this.contextPath;
+    }
+    validateProxyConfig(proxy) {
+        if (!proxy) {
+            return;
+        }
+        if (proxy.type !== "socks5" && proxy.type !== "http") {
+            throw new Error('proxy.type must be either "socks5" or "http"');
+        }
+        if (!proxy.host || !proxy.host.trim()) {
+            throw new Error("proxy.host is required when proxy is configured");
+        }
+        if (!Number.isInteger(proxy.port) ||
+            proxy.port < 1 ||
+            proxy.port > 65535) {
+            throw new Error("proxy.port must be an integer between 1 and 65535");
+        }
+        proxy.host = proxy.host.trim();
     }
     resolveExistingPath(targetPath) {
         return fs.realpathSync.native(path.resolve(targetPath));

@@ -2,6 +2,14 @@ import * as fs from "fs";
 import * as path from "path";
 import { minimatch } from "minimatch";
 
+export interface ProxyConfig {
+  type: "socks5" | "http";
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+}
+
 export interface SftpConfig {
   name?: string;
   protocol: "sftp" | "ftp" | "ftps";
@@ -12,6 +20,7 @@ export interface SftpConfig {
   privateKeyPath?: string;
   passphrase?: string;
   hostFingerprint?: string;
+  proxy?: ProxyConfig;
   remotePath: string;
   localPath?: string;
   context?: string; // Local subdirectory to use as root (e.g., "site/wp-content/")
@@ -109,6 +118,8 @@ export class ConfigManager {
       if (!config.password && !config.privateKeyPath) {
         throw new Error("Either password or privateKeyPath must be provided");
       }
+
+      this.validateProxyConfig(config.proxy);
 
       if (!config.localPath) {
         config.localPath = this.workspaceRoot;
@@ -221,6 +232,30 @@ export class ConfigManager {
 
   getContextPath(): string {
     return this.contextPath;
+  }
+
+  private validateProxyConfig(proxy: ProxyConfig | undefined): void {
+    if (!proxy) {
+      return;
+    }
+
+    if (proxy.type !== "socks5" && proxy.type !== "http") {
+      throw new Error('proxy.type must be either "socks5" or "http"');
+    }
+
+    if (!proxy.host || !proxy.host.trim()) {
+      throw new Error("proxy.host is required when proxy is configured");
+    }
+
+    if (
+      !Number.isInteger(proxy.port) ||
+      proxy.port < 1 ||
+      proxy.port > 65535
+    ) {
+      throw new Error("proxy.port must be an integer between 1 and 65535");
+    }
+
+    proxy.host = proxy.host.trim();
   }
 
   private resolveExistingPath(targetPath: string): string {

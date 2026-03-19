@@ -1,3 +1,10 @@
+export interface ProxyConfig {
+    type: "socks5" | "http";
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+}
 export interface SftpConfig {
     name?: string;
     protocol: "sftp" | "ftp" | "ftps";
@@ -8,6 +15,7 @@ export interface SftpConfig {
     privateKeyPath?: string;
     passphrase?: string;
     hostFingerprint?: string;
+    proxy?: ProxyConfig;
     remotePath: string;
     localPath?: string;
     context?: string;
@@ -53,6 +61,7 @@ export declare class ConfigManager {
     getRemotePath(localFilePath: string): string | null;
     getConfig(): SftpConfig | null;
     getContextPath(): string;
+    private validateProxyConfig;
     private resolveExistingPath;
     private resolvePathForContainmentCheck;
     private isWithinRoot;

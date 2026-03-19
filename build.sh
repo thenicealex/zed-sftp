@@ -62,7 +62,7 @@ install_extension() {
     dest="$zed_work_root/$EXTENSION_ID"
 
     echo ""
-    echo "📂 Syncing built extension into $dest ..."
+    echo "Syncing built extension into $dest ..."
     mkdir -p "$dest"
     rsync -a --delete \
         --exclude '.git' \
@@ -71,7 +71,7 @@ install_extension() {
         "$REPO_DIR"/ "$dest"/
 
     echo ""
-    echo "✅ Dev extension installed"
+    echo "Dev extension installed"
     echo ""
     echo "Next steps:"
     echo "1. Open Zed"
@@ -105,13 +105,13 @@ echo "🔧 Building SFTP Extension for Zed..."
 echo ""
 
 require_command cargo "Rust" "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-echo "✅ Rust is installed ($(cargo --version))"
+echo "Rust is installed ($(cargo --version))"
 
 require_command node "Node.js" "brew install node"
-echo "✅ Node.js is installed ($(node --version))"
+echo "Node.js is installed ($(node --version))"
 
 require_command npm "npm" "brew install node"
-echo "✅ npm is installed ($(npm --version))"
+echo "npm is installed ($(npm --version))"
 
 echo ""
 echo "📦 Installing dependencies and building language server..."
@@ -122,7 +122,7 @@ echo "📦 Installing dependencies and building language server..."
 )
 
 echo ""
-echo "🦀 Building Rust extension for WebAssembly..."
+echo "Building Rust extension for WebAssembly..."
 rustup target add wasm32-wasip2 2>/dev/null || true
 (
     cd "$REPO_DIR"
@@ -148,7 +148,7 @@ if [ ! -f "$SERVER_DIR/node_modules/vscode-languageserver/node.js" ]; then
 fi
 
 echo ""
-echo "✅ Build complete!"
+echo "Build complete!"
 
 if [ "$INSTALL_AFTER_BUILD" -eq 1 ]; then
     install_extension
@@ -156,7 +156,7 @@ if [ "$INSTALL_AFTER_BUILD" -eq 1 ]; then
 fi
 
 echo ""
-echo "📝 Next steps:"
+echo "Next steps:"
 echo "1. Install the dev extension:"
 echo "   ./build.sh --install"
 echo ""
