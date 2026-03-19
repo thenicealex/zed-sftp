@@ -17,12 +17,12 @@ impl zed::Extension for SftpExtension {
         let extension_dir = std::env::current_dir()
             .map_err(|e| format!("Failed to get current directory: {}", e))?;
 
-        let server_path = extension_dir.join("server").join("dist").join("index.js");
+        let server_path = extension_dir.join("server").join("bootstrap.js");
 
         // Verify server file exists
         if !server_path.exists() {
             return Err(format!(
-                "Server file not found at {:?}. Extension directory: {:?}",
+                "Server bootstrap file not found at {:?}. Extension directory: {:?}",
                 server_path, extension_dir
             )
             .into());

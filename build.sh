@@ -137,7 +137,7 @@ require_command npm "npm" "brew install node"
 echo "npm is installed ($(npm --version))"
 
 echo ""
-echo "📦 Installing dependencies and building language server..."
+echo "Installing dependencies and building language server..."
 (
     cd "$SERVER_DIR"
     npm install
