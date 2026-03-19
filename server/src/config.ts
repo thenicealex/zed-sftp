@@ -106,10 +106,6 @@ export class ConfigManager {
 				throw new Error("Either password or privateKeyPath must be provided");
 			}
 
-			if (!config.hostFingerprint) {
-				throw new Error("Missing required field: hostFingerprint");
-			}
-
 			if (!config.localPath) {
 				config.localPath = this.workspaceRoot;
 			}

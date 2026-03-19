@@ -2,7 +2,7 @@
 
 SFTP sync extension for Zed, inspired by [vscode-sftp](https://github.com/Natizyskunk/vscode-sftp).
 
-It runs a Node.js language server from a small Rust/WASM Zed extension and supports upload-on-save, manual transfers, folder sync, multiple profiles, ignore rules, and host fingerprint verification.
+It runs a Node.js language server from a small Rust/WASM Zed extension and supports upload-on-save, manual transfers, folder sync, multiple profiles, ignore rules, and optional host fingerprint verification.
 
 ## Features
 
@@ -48,8 +48,7 @@ Create `.zed/sftp.json` in the workspace root:
   "host": "example.com",
   "port": 22,
   "username": "deploy",
-  "privateKeyPath": "~/.ssh/id_rsa",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
+  "password": "your-password",
   "remotePath": "/var/www/html",
   "uploadOnSave": true,
   "ignore": [
@@ -62,27 +61,25 @@ Create `.zed/sftp.json` in the workspace root:
 
 ### Authentication
 
-SSH key:
-
-```json
-{
-  "username": "deploy",
-  "privateKeyPath": "~/.ssh/id_rsa",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint"
-}
-```
-
 Password:
 
 ```json
 {
   "username": "deploy",
-  "password": "your-password",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint"
+  "password": "your-password"
 }
 ```
 
-Get the host fingerprint with:
+SSH key:
+
+```json
+{
+  "username": "deploy",
+  "privateKeyPath": "~/.ssh/id_rsa"
+}
+```
+
+If you want to enforce host fingerprint verification, add `hostFingerprint` and get the value with:
 
 ```bash
 ssh-keyscan -t rsa,ecdsa,ed25519 example.com | ssh-keygen -lf - -E sha256
@@ -94,8 +91,7 @@ ssh-keyscan -t rsa,ecdsa,ed25519 example.com | ssh-keygen -lf - -E sha256
 {
   "protocol": "sftp",
   "username": "deploy",
-  "privateKeyPath": "~/.ssh/id_rsa",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
+  "password": "your-password",
   "profiles": {
     "dev": {
       "host": "dev.example.com",
@@ -120,8 +116,7 @@ Use `context` when only part of the workspace should be synced:
   "protocol": "sftp",
   "host": "example.com",
   "username": "deploy",
-  "privateKeyPath": "~/.ssh/id_rsa",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
+  "password": "your-password",
   "remotePath": "/wp-content",
   "context": "site/wp-content",
   "uploadOnSave": true
@@ -153,7 +148,7 @@ If `uploadOnSave` is `true`, saving a file inside the configured context uploads
 | `password` | string | Use instead of `privateKeyPath` if needed |
 | `privateKeyPath` | string | Path to SSH private key |
 | `passphrase` | string | Optional key passphrase |
-| `hostFingerprint` | string | Required, `SHA256:` recommended |
+| `hostFingerprint` | string | Optional. When set, `SHA256:` is recommended |
 | `remotePath` | string | Required, must be absolute |
 | `localPath` | string | Defaults to workspace root |
 | `context` | string | Workspace subdirectory used as local sync root |
@@ -193,7 +188,7 @@ Make sure these files exist afterward:
 - Confirm Node.js is installed: `node --version`
 - Confirm the remote host is reachable: `ssh user@host`
 - Confirm the remote path exists and is writable
-- Confirm the host fingerprint matches the server
+- If `hostFingerprint` is configured, confirm it matches the server
 
 ## Development
 
@@ -224,7 +219,7 @@ Install into Zed's dev extensions directory:
 
 ## Current Scope
 
-- Implemented: upload on save, manual upload/download, folder sync, multiple profiles, SSH key auth, password auth, host fingerprint verification, context path support
+- Implemented: upload on save, manual upload/download, folder sync, multiple profiles, SSH key auth, password auth, optional host fingerprint verification, context path support
 - Not implemented: FTP/FTPS, remote explorer, diff with remote, full filesystem watching beyond save events
 
 ## Examples

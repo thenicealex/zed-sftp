@@ -4,8 +4,7 @@
   "host": "example.com",
   "port": 22,
   "username": "deploy",
-  "privateKeyPath": "~/.ssh/id_rsa",
-  "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
+  "password": "your-password",
   "remotePath": "/var/www/html",
   "uploadOnSave": true,
   "ignore": [
@@ -17,6 +16,5 @@
     "*.log"
   ],
   "concurrency": 4,
-  "connectTimeout": 10000,
-  "passphrase": null
+  "connectTimeout": 10000
 }

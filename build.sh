@@ -166,8 +166,7 @@ echo "3. Create .zed/sftp.json in your project:"
 echo '   {
      "host": "your-server.com",
      "username": "your-username",
-     "privateKeyPath": "~/.ssh/id_rsa",
-     "hostFingerprint": "SHA256:base64-encoded-host-key-fingerprint",
+     "password": "your-password",
      "remotePath": "/var/www/html",
      "uploadOnSave": true
    }'

@@ -54,16 +54,18 @@ class SftpClient {
             return;
         }
         try {
-            const expectedFingerprint = this.getExpectedHostFingerprint();
             const connectConfig = {
                 host: this.config.host,
                 port: this.config.port || 22,
                 username: this.config.username,
-                hostVerifier: (hostKey) => {
+            };
+            const expectedFingerprint = this.getExpectedHostFingerprint();
+            if (expectedFingerprint) {
+                connectConfig.hostVerifier = (hostKey) => {
                     const actualFingerprint = this.computeFingerprint(hostKey, expectedFingerprint.algorithm);
                     return this.secureCompare(actualFingerprint, expectedFingerprint.value);
-                },
-            };
+                };
+            }
             // Handle authentication
             if (this.config.password) {
                 connectConfig.password = this.config.password;
@@ -213,7 +215,7 @@ class SftpClient {
     getExpectedHostFingerprint() {
         const fingerprint = this.config.hostFingerprint?.trim();
         if (!fingerprint) {
-            throw new Error('Missing required field: hostFingerprint');
+            return null;
         }
         if (fingerprint.toUpperCase().startsWith('MD5:')) {
             return {

@@ -5,9 +5,9 @@
   "host": "example.com",
   "port": 2222,
   "username": "deploy",
+  "password": "your-password",
   "remotePath": "/wp-content/",
   "uploadOnSave": true,
-  "privateKeyPath": "~/.ssh/id_rsa",
   "ignore": [
     ".git",
     ".vscode",
