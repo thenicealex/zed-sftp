@@ -162,17 +162,20 @@ Use `context` when only part of the workspace should be synced:
 
 With this setup, `site/wp-content/themes/style.css` maps to `/wp-content/themes/style.css`.
 
-## Commands
-
-Run these from the Zed command palette:
-
-- `SFTP: Upload File`
-- `SFTP: Download File`
-- `SFTP: Upload Folder`
-- `SFTP: Download Folder`
-- `SFTP: Sync`
+## Assistant Slash Commands
 
 If `uploadOnSave` is `true`, saving a file inside the configured context uploads it automatically.
+
+For manual transfers inside the Assistant, use these slash commands:
+
+- `/sftp-upload path/to/file`
+- `/sftp-download path/to/file`
+- `/sftp-sync`
+- `/sftp-sync path/to/folder`
+
+`/sftp-upload` and `/sftp-download` require a workspace-relative or absolute local path. `/sftp-sync` defaults to the configured `context` path, or the workspace root when `context` is not set.
+
+Zed does not currently expose extension-defined commands in the command palette. If you want runnable `SFTP: ...` entries there, use the task examples in [`examples/zed-tasks.example.json`](examples/zed-tasks.example.json) as a template for `.zed/tasks.json`.
 
 ## Config Reference
 

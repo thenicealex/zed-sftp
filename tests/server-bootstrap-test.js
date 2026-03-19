@@ -34,12 +34,16 @@ function runBootstrap(serverDir) {
   });
 }
 
-function testRustExtensionUsesBootstrapScript() {
+function testRustExtensionUsesNodeScriptResolver() {
   const rustEntry = fs.readFileSync(rustEntryPath, "utf8");
 
   assert(
-    rustEntry.includes('.join("server").join("bootstrap.js")'),
-    "Rust extension should launch server/bootstrap.js as the stable entrypoint",
+    rustEntry.includes('const NODE_SCRIPT_RESOLVER: &str = r#"const fs=require("fs");'),
+    "Rust extension should define a Node-side script resolver for host filesystem paths",
+  );
+  assert(
+    rustEntry.includes('"server/bootstrap.js"'),
+    "Rust extension should still resolve the language server bootstrap script",
   );
 }
 
@@ -121,7 +125,7 @@ fs.writeFileSync(path.join(process.cwd(), "tsc-ran.txt"), "yes");
 
 function main() {
   assert(fs.existsSync(bootstrapSourcePath), "server/bootstrap.js should exist");
-  testRustExtensionUsesBootstrapScript();
+  testRustExtensionUsesNodeScriptResolver();
   testBootstrapBuildsMissingDistUsingBundledTypeScript();
   testBootstrapUsesExistingDistWithoutRebuilding();
   process.stdout.write("server bootstrap tests passed\n");

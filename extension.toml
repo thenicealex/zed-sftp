@@ -6,6 +6,22 @@ authors = ["Andrey <andreyc0d3r@gmail.com>"]
 description = "SFTP file synchronization for Zed - Automatic upload on save with context path support"
 repository = "https://github.com/andreyc0d3r/zed-sftp"
 
+[lib]
+kind = "Rust"
+version = "0.7.0"
+
 [language_servers.sftp-server]
 name = "SFTP Server"
 languages = ["PHP", "JavaScript", "JSX", "TypeScript", "TSX", "CSS", "SCSS", "LESS", "HTML", "JSON", "JSONC", "Markdown", "YAML", "XML", "TOML", "Shell Script", "Dockerfile", "SQL", "Vue", "Svelte", "Astro", "Plain Text", "Python", "Ruby", "Go", "Rust", "C", "C++", "Java", "Swift"]
+
+[slash_commands.sftp-upload]
+description = "Upload a workspace file to the configured SFTP destination"
+requires_argument = true
+
+[slash_commands.sftp-download]
+description = "Download a workspace file from the configured SFTP destination"
+requires_argument = true
+
+[slash_commands.sftp-sync]
+description = "Sync the configured context folder, or a provided workspace path"
+requires_argument = false

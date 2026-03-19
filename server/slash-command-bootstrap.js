@@ -5,8 +5,8 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const serverDir = __dirname;
-const distEntry = path.join(serverDir, "dist", "index.js");
-const sourceEntry = path.join(serverDir, "src", "index.ts");
+const distEntry = path.join(serverDir, "dist", "slash-command.js");
+const sourceEntry = path.join(serverDir, "src", "slash-command.ts");
 const tsconfigPath = path.join(serverDir, "tsconfig.json");
 const typescriptBinary = path.join(
   serverDir,
@@ -23,7 +23,7 @@ function ensureServerEntry() {
 
   if (!fs.existsSync(sourceEntry)) {
     throw new Error(
-      `Language server source not found at "${sourceEntry}". Reinstall the extension with ./build.sh --install.`,
+      `Slash command source not found at "${sourceEntry}". Reinstall the extension with ./build.sh --install.`,
     );
   }
 
@@ -39,23 +39,16 @@ function ensureServerEntry() {
     );
   }
 
-  const result = spawnSync(
-    process.execPath,
-    [typescriptBinary, "-p", tsconfigPath],
-    {
-      cwd: serverDir,
-      env: process.env,
-      encoding: "utf8",
-    },
-  );
+  const result = spawnSync(process.execPath, [typescriptBinary, "-p", tsconfigPath], {
+    cwd: serverDir,
+    env: process.env,
+    encoding: "utf8",
+  });
 
   if (result.status !== 0) {
-    const compilerOutput = [result.stdout, result.stderr]
-      .filter(Boolean)
-      .join("\n")
-      .trim();
+    const compilerOutput = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
     throw new Error(
-      `Failed to rebuild the language server from "${sourceEntry}".${compilerOutput ? `\n${compilerOutput}` : ""}`,
+      `Failed to rebuild the slash command bridge from "${sourceEntry}".${compilerOutput ? `\n${compilerOutput}` : ""}`,
     );
   }
 
@@ -71,6 +64,6 @@ try {
   require(distEntry);
 } catch (error) {
   const details = error instanceof Error ? error.message : String(error);
-  console.error(`[SFTP] Failed to start the language server.\n${details}`);
+  console.error(`[SFTP] Failed to start the slash command bridge.\n${details}`);
   process.exit(1);
 }
