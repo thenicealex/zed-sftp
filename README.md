@@ -33,7 +33,7 @@ rustup target add wasm32-wasip2
 ```bash
 git clone https://github.com/andreyc0d3r/zed-sftp
 cd zed-sftp
-./install-zed-dev.sh
+./build.sh --install
 ```
 
 Then in Zed run `zed: reload extensions`.
@@ -179,8 +179,7 @@ Rebuild everything:
 
 ```bash
 ./build.sh
-./verify-build.sh
-./install-zed-dev.sh
+./build.sh --install
 ```
 
 Make sure these files exist afterward:
@@ -204,6 +203,8 @@ Build locally:
 ./build.sh
 ```
 
+`build.sh` is the single local entry point. By default it checks for Rust, Node.js, and npm, then builds the language server and `extension.wasm`. Run `./build.sh --install` to sync the built extension into Zed's dev extensions directory.
+
 Manual build:
 
 ```bash
@@ -215,16 +216,10 @@ cargo build --target wasm32-wasip2 --release
 cp target/wasm32-wasip2/release/sftp.wasm extension.wasm
 ```
 
-Verify the package:
-
-```bash
-./verify-build.sh
-```
-
 Install into Zed's dev extensions directory:
 
 ```bash
-./install-zed-dev.sh
+./build.sh --install
 ```
 
 ## Current Scope
