@@ -60,6 +60,8 @@ Create `.zed/sftp.json` in the workspace root:
 }
 ```
 
+Changes to `.zed/sftp.json`, `.vscode/sftp.json`, or a root-level `sftp.json` are hot reloaded by the language server. If the active config becomes invalid, automatic uploads and language-server-backed commands stop immediately until the file is fixed.
+
 ### Authentication
 
 Password:
@@ -208,6 +210,7 @@ Zed does not currently expose extension-defined commands in the command palette.
 - Make sure `uploadOnSave` is enabled if you expect auto-upload
 - Make sure the saved file is inside the configured `context`
 - Check Zed logs with `zed: open log`
+- If you just edited the config, remember that invalid JSON or missing required fields now disable transfers immediately until the config is corrected
 
 ### Build or install issues
 

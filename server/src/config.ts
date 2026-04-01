@@ -48,12 +48,29 @@ export interface SftpConfig {
   defaultProfile?: string;
 }
 
+export function resolveConfigPath(workspaceFolder: string): string | null {
+  const configPaths = [
+    path.join(workspaceFolder, ".zed", "sftp.json"),
+    path.join(workspaceFolder, ".vscode", "sftp.json"),
+    path.join(workspaceFolder, "sftp.json"),
+  ];
+
+  for (const configPath of configPaths) {
+    if (fs.existsSync(configPath)) {
+      return configPath;
+    }
+  }
+
+  return null;
+}
+
 export class ConfigManager {
   private workspaceFolder: string;
   private workspaceRoot: string;
   private config: SftpConfig | null = null;
   private ignorePatterns: string[] = [];
   private contextPath: string = ""; // Resolved context path
+  private configPath: string | null = null;
 
   constructor(workspaceFolder: string) {
     this.workspaceFolder = workspaceFolder;
@@ -62,20 +79,8 @@ export class ConfigManager {
   }
 
   async loadConfig(): Promise<SftpConfig | null> {
-    // Try .zed/sftp.json first
-    let configPath = path.join(this.workspaceFolder, ".zed", "sftp.json");
-
-    if (!fs.existsSync(configPath)) {
-      // Fall back to .vscode/sftp.json for compatibility
-      configPath = path.join(this.workspaceFolder, ".vscode", "sftp.json");
-    }
-
-    if (!fs.existsSync(configPath)) {
-      // Try root level sftp.json
-      configPath = path.join(this.workspaceFolder, "sftp.json");
-    }
-
-    if (!fs.existsSync(configPath)) {
+    const configPath = resolveConfigPath(this.workspaceFolder);
+    if (!configPath || !fs.existsSync(configPath)) {
       return null;
     }
 
@@ -149,6 +154,7 @@ export class ConfigManager {
       config.remotePath = remotePath;
 
       this.config = config;
+      this.configPath = configPath;
       this.ignorePatterns = [...(config.ignore || [])];
 
       if (!this.ignorePatterns.includes(".git")) {
@@ -228,6 +234,10 @@ export class ConfigManager {
 
   getConfig(): SftpConfig | null {
     return this.config;
+  }
+
+  getConfigPath(): string | null {
+    return this.configPath;
   }
 
   getContextPath(): string {

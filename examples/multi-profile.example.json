@@ -1,4 +1,5 @@
 {
+  "protocol": "sftp",
   "username": "deploy",
   "password": "your-password",
   "uploadOnSave": false,

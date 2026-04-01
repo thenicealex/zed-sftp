@@ -34,30 +34,36 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfigManager = void 0;
+exports.resolveConfigPath = resolveConfigPath;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const minimatch_1 = require("minimatch");
+function resolveConfigPath(workspaceFolder) {
+    const configPaths = [
+        path.join(workspaceFolder, ".zed", "sftp.json"),
+        path.join(workspaceFolder, ".vscode", "sftp.json"),
+        path.join(workspaceFolder, "sftp.json"),
+    ];
+    for (const configPath of configPaths) {
+        if (fs.existsSync(configPath)) {
+            return configPath;
+        }
+    }
+    return null;
+}
 class ConfigManager {
     constructor(workspaceFolder) {
         this.config = null;
         this.ignorePatterns = [];
         this.contextPath = ""; // Resolved context path
+        this.configPath = null;
         this.workspaceFolder = workspaceFolder;
         this.workspaceRoot = this.resolveExistingPath(workspaceFolder);
         this.contextPath = this.workspaceRoot;
     }
     async loadConfig() {
-        // Try .zed/sftp.json first
-        let configPath = path.join(this.workspaceFolder, ".zed", "sftp.json");
-        if (!fs.existsSync(configPath)) {
-            // Fall back to .vscode/sftp.json for compatibility
-            configPath = path.join(this.workspaceFolder, ".vscode", "sftp.json");
-        }
-        if (!fs.existsSync(configPath)) {
-            // Try root level sftp.json
-            configPath = path.join(this.workspaceFolder, "sftp.json");
-        }
-        if (!fs.existsSync(configPath)) {
+        const configPath = resolveConfigPath(this.workspaceFolder);
+        if (!configPath || !fs.existsSync(configPath)) {
             return null;
         }
         try {
@@ -113,6 +119,7 @@ class ConfigManager {
             }
             config.remotePath = remotePath;
             this.config = config;
+            this.configPath = configPath;
             this.ignorePatterns = [...(config.ignore || [])];
             if (!this.ignorePatterns.includes(".git")) {
                 this.ignorePatterns.push(".git");
@@ -169,6 +176,9 @@ class ConfigManager {
     }
     getConfig() {
         return this.config;
+    }
+    getConfigPath() {
+        return this.configPath;
     }
     getContextPath() {
         return this.contextPath;

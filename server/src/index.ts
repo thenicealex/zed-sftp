@@ -10,9 +10,8 @@ import {
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import * as path from "path";
-import * as fs from "fs";
 import { SftpClient } from "./sftp-client";
-import { ConfigManager } from "./config";
+import { RuntimeManager } from "./runtime";
 
 // Add error handlers
 process.on("uncaughtException", (error) => {
@@ -31,8 +30,7 @@ const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let workspaceFolder: string | undefined;
-let configManager: ConfigManager | undefined;
-let sftpClient: SftpClient | undefined;
+let runtime: RuntimeManager | undefined;
 
 connection.onInitialize((params: InitializeParams) => {
 	if (params.workspaceFolders && params.workspaceFolders.length > 0) {
@@ -62,25 +60,13 @@ connection.onInitialized(async () => {
 
 	if (workspaceFolder) {
 		try {
-			configManager = new ConfigManager(workspaceFolder);
-			const config = await configManager.loadConfig();
-
-			if (config) {
-				sftpClient = new SftpClient(config, connection, configManager);
-				connection.console.log(`SFTP config loaded for ${config.host}`);
-
-				// Log context path if set
-				if (config.context) {
-					connection.console.log(`Context path: ${config.context} -> ${configManager.getContextPath()}`);
-				}
-
-				// Start file watcher if uploadOnSave is enabled
-				if (config.uploadOnSave) {
-					connection.console.log("Upload on save is enabled");
-				}
-			} else {
-				connection.console.warn("No SFTP config found");
-			}
+			runtime = new RuntimeManager({
+				workspaceFolder,
+				connection,
+				createClient: ({ config, configManager, connection: runtimeConnection }) =>
+					new SftpClient(config, runtimeConnection as any, configManager),
+			});
+			await runtime.start();
 		} catch (error) {
 			connection.console.error(`Failed to initialize SFTP: ${error}`);
 		}
@@ -89,32 +75,32 @@ connection.onInitialized(async () => {
 
 // Handle document save
 documents.onDidSave(async (event) => {
-	if (!sftpClient || !configManager) {
+	if (!runtime) {
 		return;
 	}
 
-	const config = await configManager.loadConfig();
-	if (!config || !config.uploadOnSave) {
+	const readyState = runtime.getReadyState();
+	if (!readyState || !readyState.config.uploadOnSave) {
 		return;
 	}
 
 	const filePath = event.document.uri.replace("file://", "");
 
 	// Check if file is within context path
-	if (!configManager.isInContext(filePath)) {
+	if (!readyState.configManager.isInContext(filePath)) {
 		connection.console.log(`File is outside context path: ${filePath}`);
 		return;
 	}
 
 	// Check if file should be ignored
-	if (configManager.shouldIgnore(filePath)) {
+	if (readyState.configManager.shouldIgnore(filePath)) {
 		connection.console.log(`Ignoring file: ${filePath}`);
 		return;
 	}
 
 	try {
 		connection.console.log(`Uploading file on save: ${filePath}`);
-		await sftpClient.uploadFile(filePath);
+		await (readyState.client as SftpClient).uploadFile(filePath);
 		connection.window.showInformationMessage(`Uploaded: ${path.basename(filePath)}`);
 	} catch (error) {
 		connection.console.error(`Failed to upload file: ${error}`);
@@ -124,17 +110,25 @@ documents.onDidSave(async (event) => {
 
 // Handle commands
 connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
-	if (!sftpClient || !configManager) {
-		connection.window.showErrorMessage("SFTP not configured");
+	if (!runtime) {
+		connection.window.showErrorMessage("SFTP runtime is not initialized");
 		return;
 	}
+
+	const readyState = runtime.getReadyState();
+	if (!readyState) {
+		connection.window.showErrorMessage(runtime.getUnavailableMessage());
+		return;
+	}
+
+	const client = readyState.client as SftpClient;
 
 	try {
 		switch (params.command) {
 			case "sftp.upload":
 				if (params.arguments && params.arguments[0]) {
 					const filePath = params.arguments[0] as string;
-					await sftpClient.uploadFile(filePath);
+					await client.uploadFile(filePath);
 					connection.window.showInformationMessage(`Uploaded: ${path.basename(filePath)}`);
 				}
 				break;
@@ -142,20 +136,20 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
 			case "sftp.download":
 				if (params.arguments && params.arguments[0]) {
 					const filePath = params.arguments[0] as string;
-					await sftpClient.downloadFile(filePath);
+					await client.downloadFile(filePath);
 					connection.window.showInformationMessage(`Downloaded: ${path.basename(filePath)}`);
 				}
 				break;
 
 			case "sftp.sync":
-				await sftpClient.syncFolder(workspaceFolder!);
+				await client.syncFolder(workspaceFolder!);
 				connection.window.showInformationMessage("Sync completed");
 				break;
 
 			case "sftp.uploadFolder":
 				if (params.arguments && params.arguments[0]) {
 					const folderPath = params.arguments[0] as string;
-					await sftpClient.uploadFolder(folderPath);
+					await client.uploadFolder(folderPath);
 					connection.window.showInformationMessage(`Uploaded folder: ${path.basename(folderPath)}`);
 				}
 				break;
@@ -163,7 +157,7 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
 			case "sftp.downloadFolder":
 				if (params.arguments && params.arguments[0]) {
 					const folderPath = params.arguments[0] as string;
-					await sftpClient.downloadFolder(folderPath);
+					await client.downloadFolder(folderPath);
 					connection.window.showInformationMessage(`Downloaded folder: ${path.basename(folderPath)}`);
 				}
 				break;
@@ -174,6 +168,12 @@ connection.onExecuteCommand(async (params: ExecuteCommandParams) => {
 	} catch (error) {
 		connection.console.error(`Command failed: ${error}`);
 		connection.window.showErrorMessage(`Command failed: ${error}`);
+	}
+});
+
+connection.onShutdown(async () => {
+	if (runtime) {
+		await runtime.stop();
 	}
 });
 

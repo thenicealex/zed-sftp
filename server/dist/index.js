@@ -37,7 +37,7 @@ const node_1 = require("vscode-languageserver/node");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const path = __importStar(require("path"));
 const sftp_client_1 = require("./sftp-client");
-const config_1 = require("./config");
+const runtime_1 = require("./runtime");
 // Add error handlers
 process.on("uncaughtException", (error) => {
     console.error("Uncaught Exception:", error);
@@ -51,8 +51,7 @@ const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
 // Create a simple text document manager
 const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
 let workspaceFolder;
-let configManager;
-let sftpClient;
+let runtime;
 connection.onInitialize((params) => {
     if (params.workspaceFolders && params.workspaceFolders.length > 0) {
         workspaceFolder = params.workspaceFolders[0].uri.replace("file://", "");
@@ -77,23 +76,12 @@ connection.onInitialized(async () => {
     connection.console.log("SFTP Language Server initialized");
     if (workspaceFolder) {
         try {
-            configManager = new config_1.ConfigManager(workspaceFolder);
-            const config = await configManager.loadConfig();
-            if (config) {
-                sftpClient = new sftp_client_1.SftpClient(config, connection, configManager);
-                connection.console.log(`SFTP config loaded for ${config.host}`);
-                // Log context path if set
-                if (config.context) {
-                    connection.console.log(`Context path: ${config.context} -> ${configManager.getContextPath()}`);
-                }
-                // Start file watcher if uploadOnSave is enabled
-                if (config.uploadOnSave) {
-                    connection.console.log("Upload on save is enabled");
-                }
-            }
-            else {
-                connection.console.warn("No SFTP config found");
-            }
+            runtime = new runtime_1.RuntimeManager({
+                workspaceFolder,
+                connection,
+                createClient: ({ config, configManager, connection: runtimeConnection }) => new sftp_client_1.SftpClient(config, runtimeConnection, configManager),
+            });
+            await runtime.start();
         }
         catch (error) {
             connection.console.error(`Failed to initialize SFTP: ${error}`);
@@ -102,27 +90,27 @@ connection.onInitialized(async () => {
 });
 // Handle document save
 documents.onDidSave(async (event) => {
-    if (!sftpClient || !configManager) {
+    if (!runtime) {
         return;
     }
-    const config = await configManager.loadConfig();
-    if (!config || !config.uploadOnSave) {
+    const readyState = runtime.getReadyState();
+    if (!readyState || !readyState.config.uploadOnSave) {
         return;
     }
     const filePath = event.document.uri.replace("file://", "");
     // Check if file is within context path
-    if (!configManager.isInContext(filePath)) {
+    if (!readyState.configManager.isInContext(filePath)) {
         connection.console.log(`File is outside context path: ${filePath}`);
         return;
     }
     // Check if file should be ignored
-    if (configManager.shouldIgnore(filePath)) {
+    if (readyState.configManager.shouldIgnore(filePath)) {
         connection.console.log(`Ignoring file: ${filePath}`);
         return;
     }
     try {
         connection.console.log(`Uploading file on save: ${filePath}`);
-        await sftpClient.uploadFile(filePath);
+        await readyState.client.uploadFile(filePath);
         connection.window.showInformationMessage(`Uploaded: ${path.basename(filePath)}`);
     }
     catch (error) {
@@ -132,41 +120,47 @@ documents.onDidSave(async (event) => {
 });
 // Handle commands
 connection.onExecuteCommand(async (params) => {
-    if (!sftpClient || !configManager) {
-        connection.window.showErrorMessage("SFTP not configured");
+    if (!runtime) {
+        connection.window.showErrorMessage("SFTP runtime is not initialized");
         return;
     }
+    const readyState = runtime.getReadyState();
+    if (!readyState) {
+        connection.window.showErrorMessage(runtime.getUnavailableMessage());
+        return;
+    }
+    const client = readyState.client;
     try {
         switch (params.command) {
             case "sftp.upload":
                 if (params.arguments && params.arguments[0]) {
                     const filePath = params.arguments[0];
-                    await sftpClient.uploadFile(filePath);
+                    await client.uploadFile(filePath);
                     connection.window.showInformationMessage(`Uploaded: ${path.basename(filePath)}`);
                 }
                 break;
             case "sftp.download":
                 if (params.arguments && params.arguments[0]) {
                     const filePath = params.arguments[0];
-                    await sftpClient.downloadFile(filePath);
+                    await client.downloadFile(filePath);
                     connection.window.showInformationMessage(`Downloaded: ${path.basename(filePath)}`);
                 }
                 break;
             case "sftp.sync":
-                await sftpClient.syncFolder(workspaceFolder);
+                await client.syncFolder(workspaceFolder);
                 connection.window.showInformationMessage("Sync completed");
                 break;
             case "sftp.uploadFolder":
                 if (params.arguments && params.arguments[0]) {
                     const folderPath = params.arguments[0];
-                    await sftpClient.uploadFolder(folderPath);
+                    await client.uploadFolder(folderPath);
                     connection.window.showInformationMessage(`Uploaded folder: ${path.basename(folderPath)}`);
                 }
                 break;
             case "sftp.downloadFolder":
                 if (params.arguments && params.arguments[0]) {
                     const folderPath = params.arguments[0];
-                    await sftpClient.downloadFolder(folderPath);
+                    await client.downloadFolder(folderPath);
                     connection.window.showInformationMessage(`Downloaded folder: ${path.basename(folderPath)}`);
                 }
                 break;
@@ -177,6 +171,11 @@ connection.onExecuteCommand(async (params) => {
     catch (error) {
         connection.console.error(`Command failed: ${error}`);
         connection.window.showErrorMessage(`Command failed: ${error}`);
+    }
+});
+connection.onShutdown(async () => {
+    if (runtime) {
+        await runtime.stop();
     }
 });
 // Make the text document manager listen on the connection

@@ -42,12 +42,14 @@ export interface SftpConfig {
     };
     defaultProfile?: string;
 }
+export declare function resolveConfigPath(workspaceFolder: string): string | null;
 export declare class ConfigManager {
     private workspaceFolder;
     private workspaceRoot;
     private config;
     private ignorePatterns;
     private contextPath;
+    private configPath;
     constructor(workspaceFolder: string);
     loadConfig(): Promise<SftpConfig | null>;
     shouldIgnore(filePath: string): boolean;
@@ -60,6 +62,7 @@ export declare class ConfigManager {
      */
     getRemotePath(localFilePath: string): string | null;
     getConfig(): SftpConfig | null;
+    getConfigPath(): string | null;
     getContextPath(): string;
     private validateProxyConfig;
     private resolveExistingPath;
