@@ -3,6 +3,10 @@ use zed_extension_api as zed;
 use std::path::{Path, PathBuf};
 
 const EXTENSION_ID: &str = "sftp";
+const SERVER_BOOTSTRAP_LABEL: &str = "Server bootstrap file";
+const SERVER_BOOTSTRAP_PATH: &str = "server/bootstrap.js";
+const SLASH_COMMAND_BOOTSTRAP_LABEL: &str = "Slash command bootstrap file";
+const SLASH_COMMAND_BOOTSTRAP_PATH: &str = "server/slash-command-bootstrap.js";
 const NODE_SCRIPT_RESOLVER: &str = r#"const fs=require("fs");
 const args=process.argv.slice(1);
 const separatorIndex=args.indexOf("--");
@@ -23,20 +27,19 @@ require(scriptPath);"#;
 
 struct SftpExtension;
 
+fn installed_extension_dir(current_dir: &Path) -> Option<PathBuf> {
+    current_dir
+        .ancestors()
+        .find(|ancestor| ancestor.file_name().and_then(|name| name.to_str()) == Some("extensions"))
+        .map(|extensions_dir| extensions_dir.join("installed").join(EXTENSION_ID))
+}
+
 fn host_extension_dir_candidates(current_dir: &Path) -> Vec<PathBuf> {
     let mut candidates = vec![current_dir.to_path_buf()];
 
-    for ancestor in current_dir.ancestors() {
-        if ancestor
-            .file_name()
-            .and_then(|name| name.to_str())
-            .is_some_and(|name| name == "extensions")
-        {
-            let installed_dir = ancestor.join("installed").join(EXTENSION_ID);
-            if !candidates.iter().any(|candidate| candidate == &installed_dir) {
-                candidates.push(installed_dir);
-            }
-            break;
+    if let Some(installed_dir) = installed_extension_dir(current_dir) {
+        if installed_dir != current_dir {
+            candidates.push(installed_dir);
         }
     }
 
@@ -55,10 +58,36 @@ fn host_script_candidates(current_dir: &Path, script_relative_path: &str) -> Vec
         .collect()
 }
 
+fn node_script_launcher_args(
+    current_dir: &Path,
+    label: &str,
+    script_relative_path: &str,
+    forwarded_args: Vec<String>,
+) -> Vec<String> {
+    let script_candidates = host_script_candidates(current_dir, script_relative_path);
+    let mut args = Vec::with_capacity(4 + script_candidates.len() + forwarded_args.len());
+    args.push("-e".to_string());
+    args.push(NODE_SCRIPT_RESOLVER.to_string());
+    args.push(label.to_string());
+    args.extend(script_candidates);
+    args.push("--".to_string());
+    args.extend(forwarded_args);
+    args
+}
+
 fn current_host_extension_dir() -> zed::Result<PathBuf> {
     std::env::var("PWD")
         .map(PathBuf::from)
         .map_err(|e| format!("Failed to read PWD from the extension host: {}", e).into())
+}
+
+fn slash_command_action(command_name: &str) -> Result<&'static str, String> {
+    match command_name {
+        "sftp-upload" => Ok("upload"),
+        "sftp-download" => Ok("download"),
+        "sftp-sync" => Ok("sync"),
+        other => Err(format!("Unknown slash command: {}", other)),
+    }
 }
 
 fn node_command_for_script(
@@ -68,18 +97,9 @@ fn node_command_for_script(
     forwarded_args: Vec<String>,
     env: zed::EnvVars,
 ) -> zed::Result<zed::Command> {
-    let mut args = vec![
-        "-e".to_string(),
-        NODE_SCRIPT_RESOLVER.to_string(),
-        label.to_string(),
-    ];
-    args.extend(host_script_candidates(current_dir, script_relative_path));
-    args.push("--".to_string());
-    args.extend(forwarded_args);
-
     Ok(zed::Command {
         command: zed::node_binary_path()?,
-        args,
+        args: node_script_launcher_args(current_dir, label, script_relative_path, forwarded_args),
         env,
     })
 }
@@ -98,8 +118,8 @@ impl zed::Extension for SftpExtension {
 
         node_command_for_script(
             &current_dir,
-            "Server bootstrap file",
-            "server/bootstrap.js",
+            SERVER_BOOTSTRAP_LABEL,
+            SERVER_BOOTSTRAP_PATH,
             vec!["--stdio".to_string()],
             worktree.shell_env(),
         )
@@ -117,28 +137,13 @@ impl zed::Extension for SftpExtension {
         })?;
         let current_dir = current_host_extension_dir()?;
 
-        let action = match command.name.as_str() {
-            "sftp-upload" => "upload",
-            "sftp-download" => "download",
-            "sftp-sync" => "sync",
-            other => return Err(format!("Unknown slash command: {}", other)),
-        };
-
-        let launcher_args = {
-            let mut args = vec![
-                "-e".to_string(),
-                NODE_SCRIPT_RESOLVER.to_string(),
-                "Slash command bootstrap file".to_string(),
-            ];
-            args.extend(host_script_candidates(
-                &current_dir,
-                "server/slash-command-bootstrap.js",
-            ));
-            args.push("--".to_string());
-            args.push(action.to_string());
-            args.push(worktree.root_path());
-            args
-        };
+        let action = slash_command_action(command.name.as_str())?;
+        let launcher_args = node_script_launcher_args(
+            &current_dir,
+            SLASH_COMMAND_BOOTSTRAP_LABEL,
+            SLASH_COMMAND_BOOTSTRAP_PATH,
+            vec![action.to_string(), worktree.root_path()],
+        );
 
         let mut process = zed::process::Command::new(zed::node_binary_path()?);
         process = process.args(launcher_args).envs(worktree.shell_env());
@@ -182,7 +187,10 @@ zed::register_extension!(SftpExtension);
 
 #[cfg(test)]
 mod tests {
-    use super::{host_extension_dir_candidates, host_script_candidates};
+    use super::{
+        host_extension_dir_candidates, host_script_candidates, node_script_launcher_args,
+        slash_command_action, NODE_SCRIPT_RESOLVER,
+    };
     use std::path::PathBuf;
 
     #[test]
@@ -209,5 +217,35 @@ mod tests {
                 "/tmp/zed/extensions/installed/sftp/server/bootstrap.js".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn builds_node_launcher_args_with_script_candidates_and_forwarded_args() {
+        let current_dir = PathBuf::from("/tmp/zed/extensions/work/sftp");
+
+        assert_eq!(
+            node_script_launcher_args(
+                &current_dir,
+                "Server bootstrap file",
+                "server/bootstrap.js",
+                vec!["--stdio".to_string()]
+            ),
+            vec![
+                "-e".to_string(),
+                NODE_SCRIPT_RESOLVER.to_string(),
+                "Server bootstrap file".to_string(),
+                "/tmp/zed/extensions/work/sftp/server/bootstrap.js".to_string(),
+                "/tmp/zed/extensions/installed/sftp/server/bootstrap.js".to_string(),
+                "--".to_string(),
+                "--stdio".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn maps_registered_slash_command_names_to_actions() {
+        assert_eq!(slash_command_action("sftp-upload"), Ok("upload"));
+        assert_eq!(slash_command_action("sftp-download"), Ok("download"));
+        assert_eq!(slash_command_action("sftp-sync"), Ok("sync"));
     }
 }
