@@ -3,6 +3,7 @@
 **/*.rs.bk
 Cargo.lock
 .zed/
+docs/
 
 # Node
 node_modules/
